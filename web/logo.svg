@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <linearGradient id="ef-ember" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFD27A"/>
+      <stop offset="0.45" stop-color="#FF6A1F"/>
+      <stop offset="1" stop-color="#E5145F"/>
+    </linearGradient>
+    <radialGradient id="ef-core" cx="0.45" cy="0.4" r="0.7">
+      <stop offset="0" stop-color="#2A1C1A"/>
+      <stop offset="1" stop-color="#0D0E12"/>
+    </radialGradient>
+    <filter id="ef-glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="4" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <!-- forged hex badge -->
+  <polygon points="128,14 227,71 227,185 128,242 29,185 29,71" fill="url(#ef-core)"/>
+  <polygon class="ef-ring" points="128,14 227,71 227,185 128,242 29,185 29,71" fill="none" stroke="url(#ef-ember)" stroke-width="9" stroke-linejoin="round"/>
+  <polygon points="128,34 210,81 210,175 128,222 46,175 46,81" fill="none" stroke="#FF6A1F" stroke-opacity="0.18" stroke-width="2"/>
+  <!-- the E, cut like blades -->
+  <g fill="url(#ef-ember)" filter="url(#ef-glow)">
+    <polygon class="ef-spine" points="76,70 100,70 100,186 76,186"/>
+    <polygon class="ef-bar ef-b1" points="76,70 182,70 170,92 76,92"/>
+    <polygon class="ef-bar ef-b2" points="76,117 160,117 148,139 76,139"/>
+    <polygon class="ef-bar ef-b3" points="76,164 170,164 182,186 76,186"/>
+  </g>
+  <!-- echoes trailing off each blade -->
+  <g fill="#FF8A3D">
+    <polygon class="ef-echo" points="188,70 202,70 190,92 176,92" opacity="0.55"/>
+    <polygon class="ef-echo" points="208,70 216,70 204,92 196,92" opacity="0.25"/>
+    <polygon class="ef-echo" points="166,117 180,117 168,139 154,139" opacity="0.55"/>
+    <polygon class="ef-echo" points="186,117 194,117 182,139 174,139" opacity="0.25"/>
+    <polygon class="ef-echo" points="176,164 190,164 202,186 188,186" opacity="0.55"/>
+    <polygon class="ef-echo" points="196,164 204,164 216,186 208,186" opacity="0.25"/>
+  </g>
+  <!-- spark -->
+  <path class="ef-spark" d="M196 40 L200 52 L212 56 L200 60 L196 72 L192 60 L180 56 L192 52 Z" fill="#FFE2A8"/>
+</svg>

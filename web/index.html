@@ -1,0 +1,1129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EchoForge Retro Gaming</title>
+<link rel="icon" href="/icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+  @font-face { font-family: "Press Start 2P"; src: url("/PressStart2P.ttf") format("truetype"); font-display: swap; }
+  :root {
+    --navy: #241A1E;
+    --orange: #FF6A1F;
+    --orange-hi: #FF8A3D;
+    --ember: #FF6A1F;
+    --bg: #0B0C10;
+    --panel: #16171F;
+    --panel-2: #241A1E;
+    --line: #2E2A33;
+    --text: #F1EBE6;
+    --muted: #9A918C;
+    --nes: #E0453A;
+    --snes: #8B7BE8;
+    --n64: #2FB36B;
+    --arcade: #F2A93B;
+    --gb: #9BBC0F;
+    --gbc: #E85D9E;
+    --genesis: #3E8EDE;
+    --gamegear: #2BB5B5;
+    --psx: #B8BFCC;
+    --s32x: #FFB000;
+    --wii: #8FD3FF;
+    --gamecube: #7B5CFF;
+    --dreamcast: #FF8A3D;
+    --pixel: "Press Start 2P", "Consolas", monospace;
+    --ui: "Inter", "Segoe UI", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: radial-gradient(1200px 600px at 80% -10%, #E5145F44, transparent 60%),
+                radial-gradient(900px 500px at -10% 110%, #FF6A1F1A, transparent 60%), var(--bg);
+    color: var(--text); font-family: var(--ui); overflow: hidden;
+    display: grid; grid-template-columns: 240px 1fr; grid-template-rows: 84px 1fr 52px;
+    grid-template-areas: "top top" "rail main" "hints hints";
+  }
+  body::after { /* faint CRT scanlines */
+    content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 50;
+    background: repeating-linear-gradient(to bottom, #ffffff05 0 1px, transparent 1px 3px);
+  }
+  button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+  :focus { outline: none; }
+
+  /* Top bar */
+  .top {
+    grid-area: top; display: flex; align-items: center; gap: 20px; padding: 0 28px;
+    border-bottom: 1px solid var(--line); background: #0B0C10cc; backdrop-filter: blur(8px);
+  }
+  .brand { display: flex; align-items: center; gap: 14px; flex: none; }
+  .badge { width: 52px; height: 52px; flex: none; display: grid; place-items: center; filter: drop-shadow(0 0 10px #FF6A1F55); }
+  .badge img { width: 100%; height: 100%; }
+  .wordmark .small { font-size: 11px; font-weight: 800; letter-spacing: .32em; color: var(--muted); }
+  .wordmark .small span { color: var(--ember); }
+  .wordmark .big { font-family: var(--pixel); font-size: 15px; margin-top: 7px; white-space: nowrap; }
+  .wordmark .big span { color: var(--orange-hi); }
+  .search {
+    margin-left: auto; display: flex; align-items: center; gap: 10px; flex: 0 1 420px; min-width: 160px;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 0 14px; height: 44px;
+  }
+  .search:focus-within { border-color: var(--orange); box-shadow: 0 0 0 3px #FF6A1F44; }
+  .search input { flex: 1; min-width: 0; background: none; border: 0; color: var(--text); font: 500 15px var(--ui); outline: none; }
+  .search input::placeholder { color: var(--muted); }
+  .chip-btn {
+    display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 14px; border-radius: 12px;
+    background: var(--panel); border: 1px solid var(--line); font-size: 13px; font-weight: 600; white-space: nowrap;
+  }
+  .chip-btn:focus, .chip-btn:hover { border-color: var(--orange); }
+  .chip-btn.primary { background: var(--orange); border-color: var(--orange); font-weight: 800; }
+  .chip-btn.primary:focus, .chip-btn.primary:hover { background: var(--orange-hi); }
+  .chip-btn[disabled] { opacity: .5; cursor: default; }
+  .switch { width: 30px; height: 18px; border-radius: 99px; background: var(--line); position: relative; transition: .2s; flex: none; }
+  .switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: var(--muted); transition: .2s; }
+  .on .switch { background: var(--orange); }
+  .on .switch::after { left: 14px; background: #fff; }
+  .clock { font-family: var(--pixel); font-size: 12px; color: var(--muted); min-width: 64px; text-align: right; white-space: nowrap; }
+
+  /* Left rail */
+  .rail { grid-area: rail; padding: 22px 14px; border-right: 1px solid var(--line); display: flex; flex-direction: column; gap: 4px; overflow-y: auto; }
+  .rail h4 { margin: 18px 12px 8px; font-size: 11px; letter-spacing: .2em; color: var(--muted); font-weight: 700; }
+  .rail h4:first-child { margin-top: 0; }
+  .nav {
+    display: flex; align-items: center; gap: 12px; padding: 11px 12px; border-radius: 10px; text-align: left;
+    font-weight: 600; font-size: 15px; color: #D9D0CA; border: 2px solid transparent;
+  }
+  .nav .dot { width: 10px; height: 10px; border-radius: 3px; background: var(--c, var(--muted)); flex: none; }
+  .nav .count { margin-left: auto; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .nav .count.new { color: #fff; background: var(--ember); border-radius: 99px; padding: 1px 8px; font-weight: 800; }
+  .nav:hover { background: var(--panel); }
+  .nav.active { background: var(--panel-2); color: #fff; }
+  .nav.active .dot { box-shadow: 0 0 10px var(--c, var(--muted)); }
+  .nav:focus { border-color: var(--orange); }
+
+  /* Main */
+  main { grid-area: main; overflow-y: auto; padding: 28px 32px 40px; scroll-behavior: smooth; position: relative; }
+  main::-webkit-scrollbar { width: 10px; }
+  main::-webkit-scrollbar-thumb { background: var(--line); border-radius: 10px; }
+  .view-head { display: flex; align-items: baseline; gap: 14px; margin-bottom: 20px; flex-wrap: wrap; }
+  .view-head h1 { margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -.01em; }
+  .view-head .sub { color: var(--muted); font-size: 14px; }
+  .view-head .chip-btn { margin-left: auto; align-self: center; }
+  .section-title { margin: 34px 0 14px; font-size: 13px; font-weight: 700; letter-spacing: .18em; color: var(--muted); text-transform: uppercase; }
+
+  .hero {
+    position: relative; display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 24px;
+    min-height: 230px; padding: 30px 34px; border-radius: 20px; overflow: hidden; border: 2px solid transparent;
+    background: linear-gradient(120deg, var(--navy), #120F12 70%); text-align: left; width: 100%;
+  }
+  .hero::before {
+    content: ""; position: absolute; inset: 0; opacity: .5;
+    background: linear-gradient(transparent 55%, #FF6A1F40),
+      repeating-linear-gradient(90deg, #ffffff10 0 1px, transparent 1px 48px),
+      repeating-linear-gradient(0deg, #ffffff10 0 1px, transparent 1px 48px);
+    mask-image: linear-gradient(to top, #000, transparent 85%);
+  }
+  .hero > * { position: relative; }
+  .hero .eyebrow { font-size: 12px; font-weight: 700; letter-spacing: .24em; color: var(--orange-hi); }
+  .hero .title { font-size: clamp(24px, 3vw, 40px); font-weight: 800; margin: 10px 0 8px; line-height: 1.05; max-width: 900px; overflow-wrap: break-word; }
+  .hero .info { color: #D9D0CA; font-size: 15px; }
+  .hero .play {
+    display: flex; align-items: center; gap: 10px; padding: 16px 26px; border-radius: 14px;
+    background: var(--orange); font-weight: 800; font-size: 17px; box-shadow: 0 6px 0 #8A2A0C;
+  }
+  .hero:focus { border-color: var(--orange-hi); box-shadow: 0 0 0 6px #FF6A1F44; }
+  .hero:focus .play, .hero:hover .play { background: var(--orange-hi); }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 18px; }
+  .row { display: grid; grid-auto-flow: column; grid-auto-columns: 190px; gap: 18px; overflow-x: auto; padding: 6px 4px 14px; margin: -6px -4px 0; }
+  .row.wide { grid-auto-columns: 280px; }
+  .row::-webkit-scrollbar { height: 8px; }
+  .row::-webkit-scrollbar-thumb { background: var(--line); border-radius: 8px; }
+  /* Off-screen cards in big grids skip layout and paint until they scroll near (hundreds of games stay smooth) */
+  .grid > .tile { content-visibility: auto; contain-intrinsic-size: auto 210px; }
+
+  .tile {
+    --c: var(--muted);
+    position: relative; display: flex; flex-direction: column; text-align: left; border-radius: 14px; overflow: hidden;
+    background: var(--panel); border: 2px solid var(--line); transition: transform .12s, border-color .12s, box-shadow .12s;
+  }
+  .tile.nes { --c: var(--nes); } .tile.snes { --c: var(--snes); } .tile.n64 { --c: var(--n64); } .tile.arcade { --c: var(--arcade); }
+  .tile.gb { --c: var(--gb); } .tile.gbc { --c: var(--gbc); } .tile.genesis { --c: var(--genesis); } .tile.gamegear { --c: var(--gamegear); } .tile.psx { --c: var(--psx); }
+  .tile.\33 2x { --c: var(--s32x); } .tile.wii { --c: var(--wii); } .tile.gamecube { --c: var(--gamecube); } .tile.dreamcast { --c: var(--dreamcast); }
+  .tile:hover { border-color: #5A3A2E; }
+  .tile:focus, .tile.kbd-focus { transform: translateY(-4px) scale(1.03); border-color: var(--orange-hi); box-shadow: 0 14px 30px #0008, 0 0 0 4px #FF6A1F55; }
+  .cover {
+    position: relative; aspect-ratio: 4 / 3; overflow: hidden; display: grid; place-items: center;
+    background: linear-gradient(160deg, color-mix(in srgb, var(--c) 34%, var(--navy)) 0%, #0E0F14 78%);
+  }
+  .cover::before { /* retro horizon grid */
+    content: ""; position: absolute; left: -20%; right: -20%; bottom: -10%; height: 55%;
+    background: repeating-linear-gradient(90deg, color-mix(in srgb, var(--c) 45%, transparent) 0 1px, transparent 1px 22px),
+                repeating-linear-gradient(0deg, color-mix(in srgb, var(--c) 45%, transparent) 0 1px, transparent 1px 14px);
+    transform: perspective(160px) rotateX(55deg); transform-origin: bottom; opacity: .55;
+  }
+  .cover::after { /* sun */
+    content: ""; position: absolute; width: 46%; aspect-ratio: 1; border-radius: 50%; top: 14%;
+    background: linear-gradient(var(--orange-hi), color-mix(in srgb, var(--c) 60%, var(--orange)));
+    opacity: .22; filter: blur(.5px);
+  }
+  .cover.has-art::before, .cover.has-art::after { display: none; }
+  .cover .bg { position: absolute; inset: -12px; width: calc(100% + 24px); height: calc(100% + 24px); object-fit: cover; filter: blur(14px) brightness(.55) saturate(1.2); }
+  .cover .art { position: relative; z-index: 1; max-width: 88%; max-height: 90%; object-fit: contain; border-radius: 4px; box-shadow: 0 8px 20px #000a; }
+  .tile:focus .cover .art { box-shadow: 0 10px 26px #000c, 0 0 0 2px #ffffff22; }
+  /* minmax(0, 1fr): a long title wraps instead of pushing the Play button off the card */
+  .hero:has(.hero-art) { grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; }
+  .hero > div { grid-column: 1; grid-row: 1; align-self: end; }
+  .hero .play { grid-row: 1; align-self: end; }
+  .hero-art { grid-column: 2; grid-row: 1; height: min(180px, 14vw); max-width: min(220px, 16vw); object-fit: contain; border-radius: 6px; transform: rotate(-3deg); box-shadow: 0 16px 40px #000b; }
+  .hero-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; filter: blur(30px) brightness(.4) saturate(1.3); opacity: .9; }
+  .hero-bg.shot { filter: brightness(.38) saturate(1.2); image-rendering: pixelated; }
+  .mono { position: relative; z-index: 1; font-family: var(--pixel); font-size: 26px; color: #fff; text-shadow: 3px 3px 0 #0007; letter-spacing: -1px; }
+  .sys { position: absolute; z-index: 1; top: 10px; left: 10px; font-size: 10px; font-weight: 800; letter-spacing: .12em; padding: 4px 7px; border-radius: 6px; background: #0009; color: var(--c); }
+  .star { position: absolute; z-index: 1; top: 8px; right: 10px; font-size: 18px; color: var(--orange-hi); text-shadow: 0 1px 4px #000; }
+  .meta { padding: 12px 13px 14px; }
+  .meta .t { font-weight: 700; font-size: 14.5px; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.6em; }
+  .meta .r { margin-top: 6px; font-size: 12px; color: var(--muted); }
+
+  /* Cards tilt toward the mouse and catch a sweep of light (mouse only; TV boxes skip it) */
+  .tilt .tile { transform-style: preserve-3d; }
+  .tilt .tile.tilting { transition: border-color .12s, box-shadow .12s; transform: perspective(700px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)) translateY(-4px) scale(1.03); }
+  .tile .shine { position: absolute; inset: 0; z-index: 2; pointer-events: none; opacity: 0; transition: opacity .2s;
+    background: radial-gradient(circle at var(--mx, 50%) var(--my, 30%), #ffffff38, transparent 55%); mix-blend-mode: overlay; }
+  .tile.tilting .shine { opacity: 1; }
+
+  /* Collections */
+  .stile { --c: var(--muted); text-align: left; border-radius: 16px; overflow: hidden; background: var(--panel); border: 2px solid var(--line); transition: transform .12s, border-color .12s; }
+  .stile:focus, .stile:hover { border-color: var(--orange-hi); transform: translateY(-3px); }
+  .stile:focus { animation: breathe 1.8s ease-in-out infinite; }
+  .mosaic { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; aspect-ratio: 16 / 10; gap: 2px; background: #0006;
+    background-image: linear-gradient(160deg, color-mix(in srgb, var(--c) 34%, var(--navy)), #0E0F14); }
+  .mosaic img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .mosaic.n1 img { grid-column: 1 / -1; grid-row: 1 / -1; object-fit: contain; }
+  .mosaic.n2 img { grid-row: 1 / -1; }
+  .mosaic.n3 img:first-child { grid-row: 1 / -1; }
+  .stile .nm { padding: 12px 14px 2px; font-weight: 800; font-size: 15px; }
+  .stile .mk { padding: 0 14px 14px; font-size: 12px; color: var(--muted); }
+
+  .systems { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+  .sys-card {
+    --c: var(--muted); text-align: left; padding: 20px; border-radius: 16px; border: 2px solid var(--line);
+    background: linear-gradient(150deg, color-mix(in srgb, var(--c) 22%, var(--panel)), var(--panel) 70%);
+  }
+  .sys-card .n { font-family: var(--pixel); font-size: 13px; color: var(--c); }
+  .sys-card .f { margin-top: 12px; font-weight: 700; font-size: 16px; }
+  .sys-card .k { margin-top: 4px; color: var(--muted); font-size: 13px; }
+  .sys-card:focus, .sys-card:hover { border-color: var(--orange-hi); }
+
+  .empty { color: var(--muted); padding: 30px; border: 2px dashed var(--line); border-radius: 16px; text-align: center; font-size: 15px; line-height: 1.6; }
+
+  /* Game page */
+  .gp { position: relative; margin: -28px -32px -40px; padding: 48px 48px 40px; min-height: calc(100% + 68px); }
+  .gp > .gp-bg { position: absolute; left: 0; right: 0; top: 0; height: min(78vh, 760px); width: 100%; object-fit: cover; z-index: 0;
+    filter: brightness(.42) saturate(1.15); mask-image: linear-gradient(#000 45%, transparent); -webkit-mask-image: linear-gradient(#000 45%, transparent); }
+  .gp-bg.shot { image-rendering: pixelated; }
+  .gp::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: min(78vh, 760px); z-index: 0; pointer-events: none;
+    background: linear-gradient(90deg, #0B0C10f0 0%, #0B0C10a0 50%, #0B0C1040 100%); }
+  .gp-bg.blur { filter: blur(34px) brightness(.4) saturate(1.3); }
+  .gp > :not(.gp-bg) { position: relative; z-index: 1; }
+  .gp-top { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 36px; align-items: end; min-height: 46vh; }
+  .gp-cover { width: 240px; max-height: 320px; object-fit: contain; border-radius: 8px; box-shadow: 0 24px 60px #000c, 0 0 0 1px #ffffff1a; transform: rotate(-2deg); }
+  .gp-mono { width: 240px; aspect-ratio: 3 / 4; border-radius: 10px; display: grid; place-items: center; background: linear-gradient(160deg, color-mix(in srgb, var(--c) 40%, var(--navy)), #0E0F14); }
+  .gp .eyebrow { font-size: 10px; color: #FFD27A; font-family: var(--pixel); }
+  .gp h1 { margin: 14px 0 10px; font-family: var(--pixel); font-weight: 400; color: var(--title); line-height: 1.35; font-size: clamp(18px, 2.6vw, 34px);
+    filter: drop-shadow(3px 3px 0 #0008) drop-shadow(0 0 10px #FF6A1F55); overflow-wrap: break-word; }
+  .gp .facts { color: #D9D0CA; font-size: 15px; display: flex; flex-wrap: wrap; gap: 8px 18px; }
+  .gp .facts b { color: #fff; }
+  .gp-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 24px; }
+  .gp-actions .play { display: flex; align-items: center; gap: 10px; padding: 0 30px; height: 56px; border-radius: 14px; background: var(--orange);
+    font-weight: 800; font-size: 18px; box-shadow: 0 6px 0 #8A2A0C; border: 2px solid transparent; }
+  .gp-actions .play:focus, .gp-actions .play:hover { background: var(--orange-hi); animation: breathe 1.8s ease-in-out infinite; }
+  .gp-actions .chip-btn { height: 56px; padding: 0 20px; font-size: 14px; background: #16171Fcc; }
+  .gp-actions .chip-btn:focus { animation: breathe 1.8s ease-in-out infinite; }
+  .shots { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 18px; }
+  .shot { border-radius: 12px; overflow: hidden; border: 2px solid var(--line); background: #000; aspect-ratio: 4 / 3; display: grid; place-items: center; }
+  .shot img { width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; }
+  .shot span { display: block; }
+  .shot:focus, .shot:hover { border-color: var(--orange-hi); }
+
+  /* Inbox and backups */
+  .list { display: grid; gap: 10px; max-width: 980px; }
+  .item { display: flex; align-items: center; gap: 16px; padding: 14px 18px; border-radius: 14px; background: var(--panel); border: 1px solid var(--line); }
+  .item .pill { flex: none; font-size: 10px; font-weight: 800; letter-spacing: .12em; padding: 5px 8px; border-radius: 6px; background: #0009; color: var(--c, var(--muted)); min-width: 64px; text-align: center; }
+  .item .what { min-width: 0; flex: 1; }
+  .item .what b { display: block; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .item .what span { color: var(--muted); font-size: 13px; }
+  .item .chip-btn { flex: none; height: 38px; }
+  .item.wait { opacity: .6; }
+  .note { color: var(--muted); font-size: 14px; line-height: 1.6; max-width: 820px; margin: 0 0 18px; }
+  .note code { color: var(--orange-hi); }
+  .toggles { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 22px; }
+
+  /* Hints bar */
+  .hints { grid-area: hints; display: flex; align-items: center; gap: 26px; padding: 0 28px; border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; }
+  .hints b { display: inline-grid; place-items: center; min-width: 24px; height: 24px; padding: 0 6px; margin-right: 7px; border-radius: 12px; background: var(--panel-2); color: #fff; font-size: 11px; font-weight: 800; }
+  .hints .a { background: #2FB36B; } .hints .bb { background: #E0453A; } .hints .y { background: #F2A93B; color: #111; }
+  .hints .pad { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+  .pad i { width: 8px; height: 8px; border-radius: 50%; background: var(--line); }
+  .pad.live i { background: #2FB36B; box-shadow: 0 0 8px #2FB36B; }
+
+  /* Now playing overlay */
+  .overlay { position: fixed; inset: 0; z-index: 40; display: none; place-items: center; background: #08080BE6; backdrop-filter: blur(6px); }
+  .overlay.show { display: grid; }
+  .np { text-align: center; max-width: 720px; padding: 30px; }
+  .np .eyebrow { font-family: var(--pixel); font-size: 12px; color: var(--orange-hi); }
+  .np h2 { font-size: 40px; margin: 18px 0 12px; line-height: 1.1; }
+  .np p { color: var(--muted); font-size: 16px; line-height: 1.6; }
+  .np kbd { font: 700 13px var(--ui); background: var(--panel-2); border: 1px solid var(--line); border-bottom-width: 3px; border-radius: 6px; padding: 2px 8px; color: #fff; }
+  .blink { animation: blink 1s steps(2) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  .toast { position: fixed; bottom: 70px; left: 50%; transform: translateX(-50%) translateY(20px); opacity: 0; z-index: 60;
+    background: var(--panel-2); border: 1px solid var(--orange); padding: 12px 18px; border-radius: 12px; font-weight: 600; transition: .25s; pointer-events: none; }
+  .toast.show { opacity: 1; transform: translateX(-50%); }
+
+  /* Android app */
+  body { -webkit-tap-highlight-color: transparent; }
+  .only-native { display: none; }
+  .native .only-native { display: revert; }
+  .native .only-pc, .native #fsLaunch, .native #fsApp, .native .pad { display: none; }
+  .native .cover .bg { display: none; } /* TV boxes: one image per card, no blur */
+  .setup-mode .rail, .setup-mode .search, .setup-mode #fsLaunch { display: none; }
+  .setup-mode main { grid-column: 1 / -1; grid-row: 2 / -1; }
+  .setup { display: grid; gap: 14px; max-width: 760px; }
+  .setup-step { display: flex; align-items: center; gap: 16px; padding: 18px 20px; border-radius: 16px; background: var(--panel); border: 1px solid var(--line); }
+  .setup-step .check { flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; border: 2px solid var(--line); font-weight: 800; color: var(--muted); }
+  .setup-step.done .check { background: #2FB36B; border-color: #2FB36B; color: #fff; }
+  .setup-step.done { opacity: .7; }
+  .setup-step b { font-size: 16px; }
+  .setup-step p { margin: 4px 0 0; color: var(--muted); font-size: 14px; line-height: 1.5; }
+  .setup-step code { color: var(--orange-hi); }
+  .setup-step .chip-btn { margin-left: auto; flex: none; }
+  .setup-step .chip-btn:focus { border-color: var(--orange-hi); background: var(--panel-2); }
+
+  /* Narrow screens, e.g. a phone held upright */
+  @media (max-width: 900px) {
+    body { grid-template-columns: 1fr; grid-template-rows: auto auto 1fr 52px; grid-template-areas: "top" "rail" "main" "hints"; }
+    .top { flex-wrap: wrap; padding: 12px 16px; gap: 10px; }
+    .search { width: 100%; order: 5; }
+    .rail { flex-direction: row; overflow-x: auto; padding: 8px 12px; border-right: 0; border-bottom: 1px solid var(--line); }
+    .rail h4 { display: none; }
+    .nav { white-space: nowrap; }
+    main { padding: 20px 16px; }
+    .hero, .hero:has(.hero-art) { grid-template-columns: minmax(0, 1fr) auto; }
+    .hero-art { display: none; }
+    .hero .title { font-size: 28px; }
+    .hints { overflow-x: auto; gap: 16px; padding: 0 16px; white-space: nowrap; }
+    .native { grid-template-rows: auto auto 1fr; grid-template-areas: "top" "rail" "main"; }
+    .native .hints { display: none; }
+    .grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+    .gp { margin: -20px -16px; padding: 28px 16px; }
+    .gp-top { grid-template-columns: 1fr; min-height: 0; gap: 18px; }
+    .gp-cover, .gp-mono { width: 140px; }
+    .shots { grid-template-columns: 1fr; }
+  }
+
+  /* Short screens, e.g. a phone held sideways: compact bars, menu on the left */
+  @media (max-height: 500px) {
+    body, .native { grid-template-columns: 180px 1fr; grid-template-rows: 56px 1fr; grid-template-areas: "top top" "rail main"; }
+    .top { flex-wrap: nowrap; padding: 0 16px; gap: 12px; }
+    .search { width: auto; order: 0; }
+    .badge { width: 38px; height: 38px; }
+    .wordmark .small { font-size: 9px; } .wordmark .big { font-size: 11px; margin-top: 5px; }
+    .search, .chip-btn { height: 38px; }
+    .clock, .hints { display: none; }
+    .rail { flex-direction: column; overflow-y: auto; overflow-x: hidden; padding: 10px; border-right: 1px solid var(--line); border-bottom: 0; }
+    .rail h4 { display: block; margin: 10px 10px 6px; }
+    .nav { padding: 8px 10px; font-size: 14px; }
+    main { padding: 16px 18px 24px; }
+    .grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+    .row { grid-auto-columns: 140px; gap: 12px; }
+    .hero, .hero:has(.hero-art) { min-height: 0; padding: 18px 22px; grid-template-columns: minmax(0, 1fr) auto auto; }
+    .hero-art { display: block; height: 110px; }
+    .hero .title { font-size: 24px; }
+    .view-head h1 { font-size: 22px; }
+    .setup-step { padding: 12px 16px; }
+    .gp { margin: -16px -18px -24px; padding: 20px 22px; }
+    .gp-top { min-height: 0; grid-template-columns: auto minmax(0, 1fr); gap: 20px; }
+    .gp-cover, .gp-mono { width: 120px; }
+    .gp-actions .play, .gp-actions .chip-btn { height: 44px; }
+  }
+
+  /* Arcade style: 8-bit headers and titles in arcade yellow with a neon glow */
+  :root { --title: #FFD27A; --glow: 0 0 12px #FF6A1F88, 3px 3px 0 #0008; }
+  .wordmark .big, .view-head h1, .hero .title, .section-title, .rail h4, .hero .eyebrow {
+    font-family: var(--pixel); font-weight: 400; letter-spacing: 0; color: var(--title); text-shadow: var(--glow);
+  }
+  .wordmark .big span { color: #FFD27A; }
+  .view-head h1 { font-size: 22px; line-height: 1.4; }
+  .hero .title { font-size: clamp(16px, 2.2vw, 30px); line-height: 1.35; }
+  .section-title { font-size: 11px; }
+  .rail h4 { font-size: 9px; color: #FFD27A; }
+  .hero .eyebrow { font-size: 10px; color: #FFD27A; }
+  .nav:focus, .chip-btn:focus, .chip-btn:hover { box-shadow: 0 0 12px #FF6A1F66; }
+  .native .chip-btn.only-native { display: flex; }
+  .link-input { width: 100%; margin-top: 10px; height: 44px; padding: 0 14px; border-radius: 12px; background: var(--panel);
+    border: 1px solid var(--line); color: var(--text); font: 500 15px var(--ui); outline: none; }
+  .link-input:focus { border-color: var(--orange); box-shadow: 0 0 0 3px #FF6A1F44; }
+  .dlbar { position: fixed; top: 0; left: 0; right: 0; z-index: 70; padding: 10px 20px; text-align: center; display: none;
+    background: #241A1E; border-bottom: 2px solid #FFD27A; color: #FFD27A; font: 400 12px var(--pixel); }
+  .dlbar.show { display: block; }
+
+  /* Breathing neon, like the Settings menu cursor: borders pulse ember <-> pink,
+     game titles get a slow colour flow. Only the featured game and the focused
+     card animate, so TV boxes stay smooth. */
+  @keyframes breathe {
+    0%, 100% { border-color: #FF6A1F; box-shadow: 0 0 0 3px #FF6A1F33, 0 0 22px #FF6A1F66; }
+    50%      { border-color: #E5145F; box-shadow: 0 0 0 3px #E5145F33, 0 0 22px #E5145F66; }
+  }
+  @keyframes title-flow { to { background-position: 200% 0; } }
+  .hero { border-width: 2px; border-style: solid; animation: breathe 3.2s ease-in-out infinite; }
+  .hero:focus { animation-duration: 1.8s; }
+  .tile:focus, .tile.kbd-focus, .tile:hover { animation: breathe 1.8s ease-in-out infinite; }
+  .hero .title, .tile:focus .meta .t, .tile.kbd-focus .meta .t, .tile:hover .meta .t {
+    background: linear-gradient(90deg, #FFD27A, #FF6A1F, #E5145F, #FFD27A) 0 0 / 200% 100%;
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    animation: title-flow 4s linear infinite;
+  }
+  .hero .title { text-shadow: none; filter: drop-shadow(3px 3px 0 #0008) drop-shadow(0 0 10px #FF6A1F55); }
+  @media (prefers-reduced-motion: reduce) {
+    .hero, .tile, .stile, .hero .title, .tile .meta .t, .gp-actions * { animation: none !important; }
+    .tilt .tile.tilting { transform: translateY(-4px) scale(1.03); }
+  }
+</style>
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <div class="badge"><img src="/logo.svg" alt="" onerror="this.src='/icon.png'"></div>
+      <div class="wordmark">
+        <div class="small">ECHO<span>FORGE</span></div>
+        <div class="big">RETRO <span>GAMING</span></div>
+      </div>
+    </div>
+    <label class="search">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9A918C" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="q" type="search" placeholder="Search your games" autocomplete="off" data-nav>
+    </label>
+    <button class="chip-btn" id="fsLaunch" data-nav title="Start games in full screen"><span class="switch"></span>Full-screen games</button>
+    <button class="chip-btn" id="fsApp" data-nav title="Make this dashboard full screen (F11)">⛶ Dashboard</button>
+    <button class="chip-btn only-native" data-nav data-action="openRetroArch" title="Controllers, video, more emulators">⚙ Settings</button>
+    <div class="clock" id="clock"></div>
+  </header>
+
+  <nav class="rail" id="rail"></nav>
+  <main id="main"></main>
+
+  <footer class="hints">
+    <span><b class="a">A</b>Open / Play</span>
+    <span><b class="bb">B</b>Back</span>
+    <span><b class="y">Y</b>Favorite</span>
+    <span><b>LB</b><b>RB</b>Switch system</span>
+    <span class="only-pc"><b>Esc</b>twice in a game to come back here</span>
+    <span class="only-native"><b>Back</b>in a game opens the game menu</span>
+    <span class="pad" id="pad"><i></i><span id="padText">No controller</span></span>
+  </footer>
+
+  <div class="overlay" id="overlay">
+    <div class="np">
+      <div class="eyebrow" id="npEyebrow">LOADING<span class="blink">_</span></div>
+      <h2 id="npTitle"></h2>
+      <p class="only-native">Have fun! To come back, press Back, then choose Quit.</p>
+      <p class="only-pc">Have fun! Press <kbd>Esc</kbd> twice to quit the game and come back to your dashboard.<br>Press <kbd>F1</kbd> in a game for the RetroArch menu (save states, controls).</p>
+    </div>
+  </div>
+  <div class="toast" id="toast"></div>
+  <div class="dlbar" id="dlbar"></div>
+
+<script>
+const SYS_COLOR = { nes: "var(--nes)", snes: "var(--snes)", n64: "var(--n64)", arcade: "var(--arcade)",
+  gb: "var(--gb)", gbc: "var(--gbc)", genesis: "var(--genesis)", gamegear: "var(--gamegear)", psx: "var(--psx)",
+  "32x": "var(--s32x)", wii: "var(--wii)", gamecube: "var(--gamecube)", dreamcast: "var(--dreamcast)" };
+const SYS_SHORT = { nes: "NES", snes: "SNES", n64: "N64", arcade: "ARCADE", gb: "GB", gbc: "GBC", genesis: "GENESIS", gamegear: "GG", psx: "PS1",
+  "32x": "32X", wii: "WII", gamecube: "GCN", dreamcast: "DC" };
+let lib = null, view = "home", query = "", running = null, launching = null, lastFocusId = null;
+let trail = [];          // views to go back to from a game or collection page: { view, scroll, focus }
+let inbox = { items: [] }, backups = null;
+
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+// Inside the Android app, a native bridge stands in for the PC's local server.
+const NATIVE = window.Android || null;
+
+async function api(path, body) {
+  if (NATIVE) return JSON.parse(NATIVE.call(path, JSON.stringify(body || {})));
+  const opts = body ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {};
+  const r = await fetch(path, opts);
+  return r.json();
+}
+
+function toast(msg) {
+  const t = $("#toast"); t.textContent = msg; t.classList.add("show");
+  clearTimeout(toast.timer); toast.timer = setTimeout(() => t.classList.remove("show"), 2600);
+}
+
+function monogram(title) {
+  const words = title.replace(/[:\-–]/g, " ").split(/\s+/).filter((w) => w && !/^(the|a|an|of|and|in|&)$/i.test(w));
+  if (words.length === 1) return words[0].slice(0, /^\d+$/.test(words[0]) ? 4 : 3).toUpperCase();
+  return words.slice(0, 3).map((w) => w[0]).join("").toUpperCase();
+}
+
+function ago(ts) {
+  const s = Date.now() / 1000 - ts;
+  if (s < 3600) return `${Math.max(1, Math.round(s / 60))} min ago`;
+  if (s < 86400) return `${Math.round(s / 3600)} hr ago`;
+  const d = Math.round(s / 86400);
+  return d === 1 ? "yesterday" : `${d} days ago`;
+}
+
+function size(n) { return n >= 1 << 30 ? `${(n / 2 ** 30).toFixed(1)} GB` : n >= 1 << 20 ? `${(n / 2 ** 20).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`; }
+
+function playsText(g) {
+  const h = lib.history[g.id];
+  if (!h) return g.region || "";
+  return [g.region, `${h.plays} play${h.plays === 1 ? "" : "s"}`].filter(Boolean).join(" · ");
+}
+
+const byId = (id) => lib.games.find((g) => g.id === id);
+
+function tile(g) {
+  const fav = lib.favorites.includes(g.id);
+  return `<button class="tile ${g.system}" data-nav data-open="${g.id}" data-id="${g.id}">
+    <div class="cover${g.art ? " has-art" : ""}">${g.art
+      ? `<img class="bg" src="/thumb/${g.id}" alt="" loading="lazy" decoding="async"><img class="art" src="/thumb/${g.id}" alt="" loading="lazy" decoding="async">`
+      : `<span class="mono">${esc(monogram(g.title))}</span>`}<span class="sys">${SYS_SHORT[g.system]}</span>${fav ? '<span class="star">★</span>' : ""}</div>
+    <div class="meta"><div class="t">${esc(g.title)}</div><div class="r">${esc(playsText(g))}</div></div><span class="shine"></span>
+  </button>`;
+}
+
+/* ---- Collections: games that share their opening words form a series, across systems.
+   A one-word start that's too generic ("Super", "World") needs a second shared word.
+   A game can be moved into a collection by name, or kept out of one with "-". ---- */
+const SERIES_STOP = new Set(["the", "a", "an", "of", "and", "or", "for", "to", "in", "on", "vs", "vs.", "&"]);
+const SERIES_GENERIC = new Set(["dead", "super", "world", "new", "pro", "real", "big", "ultimate", "final", "grand", "dark", "black", "red",
+  "fast", "great", "little", "mega", "my", "classic", "extreme", "total", "legend", "legends", "top", "air", "street", "space", "star", "hot",
+  "ghost", "army", "nba", "nfl", "nhl", "wwf", "wcw", "ncaa", "pga", "tecmo", "sports", "art", "home", "dr.", "mr.",
+  "dragon", "battle", "double", "jungle", "ninja", "tiny", "adventure", "adventures", "captain", "dig", "incredible", "lethal", "magical",
+  "magic", "road", "aero", "california", "crash", "duck", "metal", "mighty", "nightmare", "spy", "pinball", "saturday", "monster", "power",
+  "wild", "king", "kings", "golden", "desert", "cyber", "bad", "blue", "iron", "night", "death", "speed", "turbo", "hyper", "rock", "kid",
+  "secret", "lost", "last", "twin", "tiger", "royal", "rad", "wonder", "marvel", "arcade", "arcades", "games", "game", "kung", "track", "chip"]);
+// Prefixes that mark a spin-off of a series ("Super Mario" with "Mario", "Legend of Zelda" with "Zelda").
+const SERIES_PREFIX = /^(super|ultimate|the legend of|legend of|new|mighty|mega|dr\.?|ms\.?)\s+/;
+function seriesWords(title) {
+  const t = title.replace(/^(.*?),\s*the\b/i, "The $1").replace(/\s+[-–:]\s+|:\s+/g, " ").replace(/\([^)]*\)|\[[^\]]*\]/g, " ");
+  const words = t.split(/\s+/).filter(Boolean);
+  while (words.length && /^(the|a|an)$/i.test(words[0])) words.shift();
+  return { words, keys: words.map((w) => w.toLowerCase().replace(/['’]s$/, "").replace(/['’]/g, "").replace(/[,;!?]+$/, "")) };
+}
+const seriesOk = (ks) => !SERIES_STOP.has(ks[0]) && !SERIES_STOP.has(ks[ks.length - 1]) &&
+  (ks.length > 1 || (!SERIES_GENERIC.has(ks[0]) && (ks[0].length >= 3 || /\d/.test(ks[0]))));
+let seriesMemo = { sig: "", byGame: new Map(), list: [] };
+function seriesData() {
+  const manual = lib.series || {};
+  const sig = lib.version + "|" + lib.games.length + "|" + JSON.stringify(manual);
+  if (sig === seriesMemo.sig) return seriesMemo;
+  const items = lib.games.filter((g) => !manual[g.id]).map((g) => ({ g, ...seriesWords(g.title) }));
+  const cnt = new Map();
+  for (const it of items) for (let n = 1; n <= Math.min(6, it.keys.length); n++) { const k = it.keys.slice(0, n).join(" "); cnt.set(k, (cnt.get(k) || 0) + 1); }
+  const groups = new Map();
+  const add = (key, name, g) => { if (!groups.has(key)) groups.set(key, { key, name, games: [] }); const s = groups.get(key); if (!s.games.includes(g)) s.games.push(g); };
+  const loose = [];
+  for (const it of items) {
+    let n = 0;
+    for (let i = 1; i <= Math.min(3, it.keys.length); i++) if ((cnt.get(it.keys.slice(0, i).join(" ")) || 0) >= 2 && seriesOk(it.keys.slice(0, i))) { n = i; break; }
+    if (!n) { loose.push(it); continue; }
+    while (n < it.keys.length && cnt.get(it.keys.slice(0, n + 1).join(" ")) === cnt.get(it.keys.slice(0, n).join(" "))) n++;
+    while (n > 1 && SERIES_STOP.has(it.keys[n - 1])) n--;
+    add(it.keys.slice(0, n).join(" "), it.words.slice(0, n).join(" "), it.g);
+  }
+  // Leftovers whose title contains another title's opening words ("Ultimate Mortal Kombat 3" joins Mortal Kombat).
+  const contains = (ks, ph) => { for (let i = 1; i + ph.length <= ks.length; i++) if (ph.every((p, j) => ks[i + j] === p)) return true; return false; };
+  const used = new Set();
+  for (const a of loose) for (let n = Math.min(4, a.keys.length); n >= 2; n--) {
+    const ph = a.keys.slice(0, n); if (!seriesOk(ph) || used.has(a)) continue;
+    const key = ph.join(" "), mates = loose.filter((b) => b !== a && !used.has(b) && contains(b.keys, ph));
+    if (groups.has(key) || mates.length) { for (const b of [a, ...mates]) { add(key, a.words.slice(0, n).join(" "), b.g); used.add(b); } break; }
+  }
+  for (const [key, s] of groups) for (const it of loose) if (!used.has(it) && contains(it.keys, key.split(" ")) && key.includes(" ")) { add(key, s.name, it.g); used.add(it); }
+  // Spin-offs join their series: "Mario" into "Super Mario", "Ultimate Mortal Kombat 3" into "Mortal Kombat".
+  const core = (k) => k.replace(SERIES_PREFIX, "");
+  const keys = [...groups.keys()].sort((a, b) => groups.get(b).games.length - groups.get(a).games.length);
+  for (const kb of keys) {
+    if (!groups.has(kb)) continue;
+    const cb = core(kb);
+    const into = keys.find((ka) => ka !== kb && groups.has(ka) && groups.get(ka).games.length >= groups.get(kb).games.length &&
+      (core(ka) === cb || (core(ka) + " ").startsWith(cb + " ") || (cb + " ").startsWith(core(ka) + " ")) && (core(ka).includes(" ") || core(ka).length >= 4));
+    if (into) { for (const g of groups.get(kb).games) add(into, groups.get(into).name, g); groups.delete(kb); }
+  }
+  for (const g of lib.games) {
+    const name = manual[g.id];
+    if (name && name !== "-") { const k = seriesWords(name).keys.join(" "); add(k, groups.has(k) ? groups.get(k).name : name, g); }
+  }
+  const list = [...groups.values()].filter((s) => s.games.length >= 2)
+    .sort((a, b) => b.games.length - a.games.length || a.name.localeCompare(b.name));
+  for (const s of list) s.games.sort((a, b) => a.title.localeCompare(b.title, undefined, { numeric: true }));
+  const byGame = new Map(); for (const s of list) for (const g of s.games) byGame.set(g.id, s);
+  seriesMemo = { sig, byGame, list };
+  return seriesMemo;
+}
+function seriesTile(s) {
+  const pics = s.games.filter((g) => g.art).slice(0, 4);
+  const systems = [...new Set(s.games.map((g) => SYS_SHORT[g.system]))];
+  return `<button class="stile" data-nav data-view="series:${esc(s.key)}" style="--c:${SYS_COLOR[s.games[0].system]}">
+    <div class="mosaic n${pics.length}">${pics.map((g) => `<img src="/thumb/${g.id}" alt="" loading="lazy" decoding="async">`).join("")}</div>
+    <div class="nm">${esc(s.name)}</div><div class="mk">${s.games.length} games · ${esc(systems.join(" · "))}</div></button>`;
+}
+
+function filtered(list) {
+  if (!query) return list;
+  const q = query.toLowerCase();
+  return list.filter((g) => g.title.toLowerCase().includes(q));
+}
+
+function recent() {
+  return lib.games.filter((g) => lib.history[g.id]).sort((a, b) => lib.history[b.id].last - lib.history[a.id].last);
+}
+
+// Redraws skip any part whose HTML hasn't changed, so background refreshes never flicker or lose focus.
+function setHTML(el, html) {
+  if (el._html === html) return false;
+  el._html = html; el.innerHTML = html;
+  return true;
+}
+
+function renderRail() {
+  const count = (id) => lib.games.filter((g) => g.system === id).length;
+  const base = view.startsWith("game:") ? (trail[trail.length - 1]?.view || "home") : view;
+  const item = (id, label, c, n, cls = "") =>
+    `<button class="nav ${cls} ${base === id || (id === "collections" && base.startsWith("series:")) ? "active" : ""}" data-nav data-view="${id}" style="--c:${c}"><span class="dot"></span>${label}${n != null && n !== "" ? `<span class="count${cls.includes("hasnew") ? " new" : ""}">${n}</span>` : ""}</button>`;
+  const ready = inbox.items.filter((i) => i.status === "ready").length;
+  setHTML($("#rail"),
+    `<h4>LIBRARY</h4>` +
+    item("home", "Home", "var(--orange)") +
+    item("all", "All games", "#D9D0CA", lib.games.length) +
+    item("favorites", "Favorites", "var(--orange-hi)", lib.favorites.length) +
+    item("collections", "Collections", "#FFD27A", seriesData().list.length) +
+    (NATIVE ? "" : item("inbox", "Add games", "var(--ember)", ready || "", ready ? "hasnew" : "") + item("backups", "Save backups", "#2FB36B")) +
+    `<h4>SYSTEMS</h4>` +
+    lib.systems.map((s) => item(s.id, s.name, SYS_COLOR[s.id], count(s.id))).join(""));
+}
+
+function gridOrEmpty(list, empty) {
+  return list.length ? `<div class="grid">${list.map(tile).join("")}</div>` : `<div class="empty">${empty}</div>`;
+}
+
+function viewHome() {
+  const rec = recent();
+  const favs = lib.games.filter((g) => lib.favorites.includes(g.id));
+  let html = "";
+  if (rec.length) {
+    const g = rec[0], h = lib.history[g.id];
+    const bg = g.snap ? `<img class="hero-bg shot" src="/snap/${g.id}" alt="">` : g.art ? `<img class="hero-bg" src="/thumb/${g.id}" alt="">` : "";
+    html += `<button class="hero" data-nav data-play="${g.id}" data-id="${g.id}">
+      ${bg}${g.art ? `<img class="hero-art" src="/art/${g.id}" alt="">` : ""}
+      <div><div class="eyebrow">JUMP BACK IN · ${SYS_SHORT[g.system]}</div><div class="title">${esc(g.title)}</div>
+      <div class="info">Last played ${ago(h.last)} · ${h.plays} play${h.plays === 1 ? "" : "s"}</div></div>
+      <span class="play">▶ PLAY</span></button>`;
+  } else {
+    html += `<div class="view-head"><h1>Welcome to EchoForge Retro Gaming</h1></div>
+      <div class="empty">Pick a system below or press <b>RB</b> to browse. Games you play will show up here.</div>`;
+  }
+  if (rec.length > 1) html += `<div class="section-title">Recently played</div><div class="row">${rec.slice(1, 13).map(tile).join("")}</div>`;
+  if (favs.length) html += `<div class="section-title">Favorites</div><div class="row">${favs.map(tile).join("")}</div>`;
+  const series = seriesData().list;
+  if (series.length) html += `<div class="section-title">Collections</div><div class="row wide">${series.slice(0, 12).map(seriesTile).join("")}</div>`;
+  html += `<div class="section-title">Systems</div><div class="systems">` + lib.systems.map((s) => {
+    const n = lib.games.filter((g) => g.system === s.id).length;
+    return `<button class="sys-card" data-nav data-view="${s.id}" style="--c:${SYS_COLOR[s.id]}"><div class="n">${SYS_SHORT[s.id]}</div><div class="f">${esc(s.full)}</div><div class="k">${n} games</div></button>`;
+  }).join("") + `</div>`;
+  return html;
+}
+
+function viewGame(g) {
+  const h = lib.history[g.id], fav = lib.favorites.includes(g.id);
+  const s = seriesData().byGame.get(g.id);
+  const sys = lib.systems.find((x) => x.id === g.system);
+  const backdrop = g.snap ? `<img class="gp-bg shot" src="/snap/${g.id}" alt="">`
+    : g.titleShot ? `<img class="gp-bg shot" src="/title/${g.id}" alt="">`
+    : g.art ? `<img class="gp-bg blur" src="/thumb/${g.id}" alt="">` : "";
+  const cover = g.art ? `<img class="gp-cover" src="/art/${g.id}" alt="">`
+    : `<div class="gp-mono"><span class="mono">${esc(monogram(g.title))}</span></div>`;
+  const shots = [g.snap && ["snap", "In-game"], g.titleShot && ["title", "Title screen"]].filter(Boolean);
+  let more = s ? s.games.filter((x) => x.id !== g.id) : [];
+  let moreTitle = s ? `More in ${s.name}` : "";
+  if (!more.length) {
+    more = lib.games.filter((x) => x.system === g.system && x.id !== g.id && x.art);
+    const seed = [...g.id].reduce((a, c) => a + c.charCodeAt(0), 0);
+    more = more.map((x, i) => [((i + 1) * 2654435761 + seed) % 4294967296, x]).sort((a, b) => a[0] - b[0]).slice(0, 12).map((p) => p[1]);
+    moreTitle = `More ${sys ? sys.name : ""} games`;
+  }
+  return `<div class="gp" style="--c:${SYS_COLOR[g.system]}">${backdrop}
+    <div class="gp-top">${cover}<div>
+      <div class="eyebrow">${esc(sys ? sys.full : SYS_SHORT[g.system])}${g.region ? " · " + esc(g.region) : ""}</div>
+      <h1>${esc(g.title)}</h1>
+      <div class="facts">${h ? `<span>Played <b>${h.plays}</b> time${h.plays === 1 ? "" : "s"}</span><span>Last played <b>${ago(h.last)}</b></span>` : "<span>Not played yet</span>"}
+        ${s ? `<span>Collection: <b>${esc(s.name)}</b></span>` : ""}</div>
+      <div class="gp-actions">
+        <button class="play" data-nav data-play="${g.id}" data-id="${g.id}" id="gpPlay">▶ PLAY</button>
+        <button class="chip-btn" data-nav data-act="fav" data-arg="${g.id}">${fav ? "★ Favorite" : "☆ Add to favorites"}</button>
+        ${s ? `<button class="chip-btn" data-nav data-view="series:${esc(s.key)}">▦ ${esc(s.name)}</button>` : ""}
+        ${NATIVE ? "" : `<button class="chip-btn" data-nav data-act="series" data-arg="${g.id}">✎ Collection</button>`}
+      </div></div></div>
+    ${shots.length ? `<div class="section-title">Screenshots</div><div class="shots">${shots.map(([k, label]) =>
+      `<div class="shot" data-nav tabindex="0" title="${label}"><img src="/${k}/${g.id}" alt="${label}" loading="lazy" decoding="async"></div>`).join("")}</div>` : ""}
+    ${more.length ? `<div class="section-title">${esc(moreTitle)}</div><div class="row">${more.map(tile).join("")}</div>` : ""}
+  </div>`;
+}
+
+function viewInbox() {
+  const items = inbox.items;
+  const ready = items.filter((i) => i.status === "ready");
+  return `<div class="view-head"><h1>Add games</h1><span class="sub">${esc(inbox.folder || "No folder chosen")}</span>
+      ${ready.length > 1 ? `<button class="chip-btn primary" data-nav data-act="inboxAll">Add all ${ready.length}</button>` : ""}</div>
+    <p class="note">Game files you made from cartridges you own, for NES, SNES, N64, Game Boy, Genesis, Game Gear and 32X, show up here from the folder you choose.
+      Each one is checked from the game file inside (loose, <code>.zip</code> or <code>.7z</code>), copied into its system's folder,
+      added to your library with box art and screenshots, and then the original goes to the Recycle Bin. Programs and shortcuts are never opened.
+      Disc games (PlayStation, GameCube, Wii) are for EchoForge's import folder.</p>
+    <div class="note"><input class="link-input" id="inboxFolder" value="${esc(inbox.folder || "")}" placeholder="Folder, like C:\\Games\\To add" autocomplete="off" data-nav>
+      <button class="chip-btn" style="margin-top:10px" data-nav data-act="inboxFolder">Use this folder</button></div>
+    ${items.length ? `<div class="list">${items.map((i) => `<div class="item${i.status === "ready" ? "" : " wait"}" style="--c:${SYS_COLOR[i.system]}">
+        <span class="pill">${SYS_SHORT[i.system]}</span>
+        <div class="what"><b>${esc(i.label)}</b><span>${esc(i.name)} · ${size(i.size)}${i.status === "copying" ? " · still being copied" : ""}</span></div>
+        ${i.status === "ready" ? `<button class="chip-btn primary" data-nav data-act="inboxAdd" data-arg="${esc(i.file)}">Add</button>` : ""}</div>`).join("")}</div>`
+      : `<div class="empty">${inbox.folder ? "No new games in this folder. Put a game file in it and it appears here within a few seconds." : "Choose a folder above to get started."}</div>`}`;
+}
+
+function viewBackups() {
+  if (!backups) return `<div class="view-head"><h1>Save backups</h1></div><div class="empty">Loading…</div>`;
+  const s = lib.settings;
+  const sw = (key, label) => `<button class="chip-btn ${s[key] !== false ? "on" : ""}" data-nav data-act="toggle" data-arg="${key}"><span class="switch"></span>${label}</button>`;
+  return `<div class="view-head"><h1>Save backups</h1><span class="sub">${backups.last ? "Last backup " + ago(backups.last) : "No backups yet"}</span>
+      <button class="chip-btn primary" data-nav data-act="backupNow" ${backups.busy ? "disabled" : ""}>${backups.busy ? "Backing up…" : "Back up now"}</button></div>
+    <p class="note">Your RetroArch saves and save states (${backups.sources.map((x) => `<code>${esc(x.path)}</code>`).join(" and ")}) are copied to
+      <code>${esc(backups.root)}</code>. A backup is skipped when nothing changed, the newest 10 are kept and older ones go to the Recycle Bin.
+      Restoring backs up your current saves first.</p>
+    <div class="toggles">${sw("backupAfterPlay", "After every game")}${sw("backupWeekly", "Every week")}</div>
+    ${backups.snapshots.length ? `<div class="list">${backups.snapshots.map((b) => `<div class="item">
+        <span class="pill" style="--c:#2FB36B">${esc(b.reason.toUpperCase() || "BACKUP")}</span>
+        <div class="what"><b>${esc(b.name)}</b><span>${b.files} file${b.files === 1 ? "" : "s"} · ${size(b.bytes)} · ${ago(b.at)}</span></div>
+        <button class="chip-btn" data-nav data-act="restore" data-arg="${esc(b.name)}">Restore</button></div>`).join("")}</div>`
+      : `<div class="empty">No backups yet. One is made after your next game, or press Back up now.</div>`}`;
+}
+
+function renderMain() {
+  const m = $("#main");
+  if (query) {
+    const res = filtered(lib.games);
+    return setHTML(m, `<div class="view-head"><h1>Results for “${esc(query)}”</h1><span class="sub">${res.length} game${res.length === 1 ? "" : "s"}</span></div>` +
+      gridOrEmpty(res, "No games match that search."));
+  }
+  if (view === "home") return setHTML(m, viewHome());
+  if (view.startsWith("game:")) {
+    const g = byId(view.slice(5));
+    if (g) return setHTML(m, viewGame(g));
+    view = "home"; return setHTML(m, viewHome());
+  }
+  if (view === "inbox") return setHTML(m, viewInbox());
+  if (view === "backups") return setHTML(m, viewBackups());
+  if (view === "collections") {
+    const list = seriesData().list;
+    return setHTML(m, `<div class="view-head"><h1>Collections</h1><span class="sub">${list.length} series</span></div>` +
+      (list.length ? `<div class="systems">${list.map(seriesTile).join("")}</div>` : `<div class="empty">No series found yet.</div>`));
+  }
+  if (view.startsWith("series:")) {
+    const s = seriesData().list.find((x) => x.key === view.slice(7));
+    if (!s) { view = "collections"; return renderMain(); }
+    return setHTML(m, `<div class="view-head"><h1>${esc(s.name)}</h1><span class="sub">${s.games.length} games</span></div>` + gridOrEmpty(s.games, ""));
+  }
+  let list, title;
+  if (view === "all") { list = lib.games; title = "All games"; }
+  else if (view === "favorites") { list = lib.games.filter((g) => lib.favorites.includes(g.id)); title = "Favorites"; }
+  else { const sys = lib.systems.find((s) => s.id === view); if (!sys) { view = "home"; return renderMain(); } list = lib.games.filter((g) => g.system === view); title = sys.full; }
+  return setHTML(m, `<div class="view-head"><h1>${esc(title)}</h1><span class="sub">${list.length} game${list.length === 1 ? "" : "s"}</span></div>` +
+    gridOrEmpty(list, view === "favorites" ? "No favorites yet. Press Y on a game (or F on the keyboard) to add one." : "No games here yet."));
+}
+
+function render(focusFirst) {
+  const keep = document.activeElement?.dataset?.id || document.activeElement?.dataset?.view;
+  renderRail();
+  const changed = renderMain();
+  const fs = lib.settings.fullscreen !== false;
+  $("#fsLaunch").classList.toggle("on", fs);
+  if (focusFirst) {
+    const target = (view.startsWith("game:") && $("#gpPlay")) || (lastFocusId && $(`#main [data-id="${lastFocusId}"]`)) || $("#main [data-nav]");
+    if (target) target.focus({ preventScroll: view.startsWith("game:") });
+  } else if (changed && keep) {
+    const again = $(`#main [data-id="${keep}"]`) || $(`[data-view="${keep}"]`);
+    if (again) again.focus({ preventScroll: true });
+  }
+}
+
+function setView(v) {
+  if (!v.startsWith("game:") && !v.startsWith("series:")) trail = [];
+  view = v; query = ""; $("#q").value = ""; lastFocusId = null;
+  $("#main").style.scrollBehavior = "auto"; $("#main").scrollTop = 0;
+  render(true);
+  $("#main").style.scrollBehavior = "";
+  if (v === "inbox") refreshInbox();
+  if (v === "backups") refreshBackups();
+}
+
+function openPage(v) {
+  trail.push({ view, query, scroll: $("#main").scrollTop, focus: document.activeElement?.dataset?.id || null });
+  view = v; query = ""; $("#q").value = "";
+  $("#main").style.scrollBehavior = "auto"; $("#main").scrollTop = 0;
+  render(true);
+  $("#main").style.scrollBehavior = "";
+}
+
+function leavePage() {
+  const prev = trail.pop();
+  if (!prev) return setView("home");
+  view = prev.view; query = prev.query; $("#q").value = query;
+  lastFocusId = prev.focus;
+  render(false);
+  $("#main").style.scrollBehavior = "auto"; $("#main").scrollTop = prev.scroll; $("#main").style.scrollBehavior = "";
+  const el = (prev.focus && $(`#main [data-id="${prev.focus}"]`)) || $("#main [data-nav]");
+  if (el) el.focus({ preventScroll: true });
+}
+
+async function launch(id) {
+  if (running || launching) return;
+  const g = byId(id);
+  if (!g) return;
+  lastFocusId = id; launching = id;
+  $("#npTitle").textContent = g.title;
+  $("#npEyebrow").innerHTML = `LOADING<span class="blink">_</span>`;
+  $("#overlay").classList.add("show");
+  const r = await api("/api/launch", { id });
+  if (!r.ok) { launching = null; $("#overlay").classList.remove("show"); toast(r.error || "Could not start that game."); }
+  else if (NATIVE) setTimeout(() => { launching = null; $("#overlay").classList.remove("show"); }, 4000);
+}
+
+async function toggleFav(id) {
+  if (!id && view.startsWith("game:")) id = view.slice(5);
+  if (!id) return;
+  const on = !lib.favorites.includes(id);
+  const r = await api("/api/favorite", { id, on });
+  lib.favorites = r.favorites;
+  toast(on ? "Added to favorites" : "Removed from favorites");
+  render(false);
+}
+
+async function editSeries(id) {
+  const g = byId(id), cur = (lib.series || {})[id] || seriesData().byGame.get(id)?.name || "";
+  const name = prompt(`Collection for “${g.title}”.\nType a name to move it, “-” to keep it out of collections, or leave empty for automatic.`, cur);
+  if (name === null) return;
+  const r = await api("/api/series", { id, name: name.trim() });
+  if (r.ok) { lib.series = r.series; render(false); toast(name.trim() === "-" ? "Kept out of collections" : name.trim() ? `Moved to ${name.trim()}` : "Collection set to automatic"); }
+}
+
+async function refreshInbox() {
+  if (NATIVE || !lib) return;
+  try {
+    const r = await api("/api/inbox");
+    const before = inbox.items.filter((i) => i.status === "ready").length;
+    inbox = r;
+    const ready = inbox.items.filter((i) => i.status === "ready").length;
+    if (ready > before && view !== "inbox") toast(`${ready} new game${ready === 1 ? "" : "s"} in Add games`);
+    if (!$("#inboxFolder")?.dataset.typed) render(false);
+  } catch (e) { /* server restarting */ }
+}
+
+async function refreshBackups() {
+  if (NATIVE) return;
+  try { backups = await api("/api/backups"); if (view === "backups") render(false); } catch (e) { /* server restarting */ }
+}
+
+async function act(name, arg, el) {
+  if (name === "fav") return toggleFav(arg);
+  if (name === "series") return editSeries(arg);
+  if (name === "inboxFolder") {
+    const r = await api("/api/inbox/folder", { path: $("#inboxFolder").value });
+    if (r.error) return toast(r.error);
+    delete $("#inboxFolder").dataset.typed;
+    return refreshInbox();
+  }
+  if (name === "inboxAdd" || name === "inboxAll") {
+    el.disabled = true; el.textContent = "Adding…";
+    toast(name === "inboxAll" ? "Adding your games…" : "Adding…");
+    const r = await api("/api/inbox/add", name === "inboxAll" ? { all: true } : { file: arg });
+    if (r.added?.length) toast(r.added.length === 1 ? `Added ${r.added[0].label}` : `Added ${r.added.length} games`);
+    if (r.errors?.length) toast(r.errors[0].error);
+    lib = await api("/api/library"); return refreshInbox();
+  }
+  if (name === "toggle") {
+    const r = await api("/api/settings", { [arg]: !(lib.settings[arg] !== false) });
+    lib.settings = r.settings; return render(false);
+  }
+  if (name === "backupNow") {
+    el.disabled = true; el.textContent = "Backing up…";
+    const r = await api("/api/backup/run");
+    toast(!r.ok ? r.error : r.skipped ? "Nothing changed since the last backup" : `Backed up ${r.files} file${r.files === 1 ? "" : "s"}`);
+    return refreshBackups();
+  }
+  if (name === "restore") {
+    if (!confirm(`Restore your saves from ${arg}?\nYour current saves are backed up first.`)) return;
+    const r = await api("/api/backup/restore", { name: arg });
+    toast(r.ok ? `Restored ${r.files} file${r.files === 1 ? "" : "s"}` : r.error);
+    return refreshBackups();
+  }
+}
+
+async function poll() {
+  try {
+    const s = await api("/api/status");
+    if (s.running) {
+      running = s.running; launching = null;
+      $("#npEyebrow").textContent = "NOW PLAYING";
+      $("#overlay").classList.add("show");
+    } else if (running) {
+      running = null;
+      $("#overlay").classList.remove("show");
+      lib = await api("/api/library");
+      render(true);
+    } else if (lib && s.version !== lib.version) {
+      lib = await api("/api/library");   // new games or art arrived in the background
+      render(false);
+    }
+  } catch (e) { /* server restarting */ }
+}
+
+/* Spatial navigation shared by keyboard and controller */
+function navigable() {
+  return [...document.querySelectorAll("[data-nav]")].filter((el) => el.offsetParent !== null && !el.disabled);
+}
+function move(dir) {
+  const els = navigable(), cur = document.activeElement;
+  if (!els.includes(cur)) { ($("#main [data-nav]") || els[0])?.focus(); return; }
+  const a = cur.getBoundingClientRect(), ax = a.left + a.width / 2, ay = a.top + a.height / 2;
+  let best = null, bestScore = Infinity;
+  for (const el of els) {
+    if (el === cur) continue;
+    const b = el.getBoundingClientRect(), bx = b.left + b.width / 2, by = b.top + b.height / 2;
+    const dx = bx - ax, dy = by - ay;
+    let primary, secondary;
+    if (dir === "right") { if (b.left < a.right - 4) continue; primary = dx; secondary = dy; }
+    else if (dir === "left") { if (b.right > a.left + 4) continue; primary = -dx; secondary = dy; }
+    else if (dir === "down") { if (b.top < a.bottom - 4) continue; primary = dy; secondary = dx; }
+    else { if (b.bottom > a.top + 4) continue; primary = -dy; secondary = dx; }
+    const score = primary + Math.abs(secondary) * 2.2;
+    if (score < bestScore) { bestScore = score; best = el; }
+  }
+  if (best) { best.focus({ preventScroll: true }); best.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "smooth" }); }
+}
+function cycleView(step) {
+  const order = ["home", "all", "favorites", "collections", ...lib.systems.map((s) => s.id)];
+  const base = view.startsWith("game:") || view.startsWith("series:") ? (trail[0]?.view || "home") : view;
+  const i = order.indexOf(base);
+  setView(order[((i < 0 ? 0 : i) + step + order.length) % order.length]);
+}
+function back() {
+  if (query || document.activeElement === $("#q")) { query = ""; $("#q").value = ""; render(true); return true; }
+  if (trail.length) { leavePage(); return true; }
+  if (view !== "home") { setView("home"); return true; }
+  return false;
+}
+
+function activate(el) {
+  if (el.dataset.play) return launch(el.dataset.play);
+  if (el.dataset.open) return openPage("game:" + el.dataset.open);
+  if (el.dataset.act) return act(el.dataset.act, el.dataset.arg, el);
+  if (el.dataset.view) return el.dataset.view.startsWith("series:") ? openPage(el.dataset.view) : setView(el.dataset.view);
+}
+document.addEventListener("click", (e) => {
+  const el = e.target.closest("[data-play],[data-open],[data-act],[data-view]");
+  if (el) activate(el);
+});
+document.addEventListener("keydown", (e) => {
+  if (running || launching) return;
+  const inSearch = document.activeElement === $("#q");
+  const typing = document.activeElement?.tagName === "INPUT";  // search box or folder box
+  const dirs = { ArrowUp: "up", ArrowDown: "down", ArrowLeft: "left", ArrowRight: "right" };
+  if (dirs[e.key] && !(typing && (e.key === "ArrowLeft" || e.key === "ArrowRight"))) { e.preventDefault(); move(dirs[e.key]); }
+  else if (e.key === "Escape" || (e.key === "Backspace" && !typing)) { e.preventDefault(); back(); }
+  else if (!typing && (e.key === "f" || e.key === "F")) toggleFav(document.activeElement?.dataset.id);
+  else if (!typing && e.key === "/") { e.preventDefault(); $("#q").focus(); }
+  else if (e.key === "Enter" && inSearch) { $("#main [data-nav]")?.focus(); }
+});
+let searchTimer;
+$("#q").addEventListener("input", (e) => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => {
+    query = e.target.value.trim();
+    if (query && trail.length) { view = trail[0].view; trail = []; }  // searching from a game page starts over from its list
+    renderRail(); renderMain();
+  }, 120);
+});
+$("#fsLaunch").addEventListener("click", async () => {
+  const r = await api("/api/settings", { fullscreen: !(lib.settings.fullscreen !== false) });
+  lib.settings = r.settings; render(false);
+  toast(lib.settings.fullscreen ? "Games will start full screen" : "Games will start in a window");
+});
+$("#fsApp").addEventListener("click", () => {
+  if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen();
+});
+
+/* Cards tilt toward the mouse (mouse only, and not when motion is reduced) */
+if (!NATIVE && matchMedia("(hover: hover) and (pointer: fine)").matches && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+  document.body.classList.add("tilt");
+  let raf = 0, last = null;
+  document.addEventListener("pointermove", (e) => {
+    last = e; if (raf) return;
+    raf = requestAnimationFrame(() => {
+      raf = 0;
+      const t = last.target.closest?.(".tile");
+      document.querySelectorAll(".tile.tilting").forEach((x) => { if (x !== t) x.classList.remove("tilting"); });
+      if (!t) return;
+      const r = t.getBoundingClientRect(), px = (last.clientX - r.left) / r.width, py = (last.clientY - r.top) / r.height;
+      t.style.setProperty("--ry", `${(px - 0.5) * 14}deg`); t.style.setProperty("--rx", `${(0.5 - py) * 12}deg`);
+      t.style.setProperty("--mx", `${px * 100}%`); t.style.setProperty("--my", `${py * 100}%`);
+      t.classList.add("tilting");
+    });
+  }, { passive: true });
+  document.addEventListener("pointerleave", () => document.querySelectorAll(".tile.tilting").forEach((x) => x.classList.remove("tilting")));
+}
+
+/* Controller support (standard mapping: 0 A, 1 B, 3 Y, 4 LB, 5 RB, 12-15 d-pad) */
+const held = {};
+let padShown = null;
+function pressed(id, isDown, repeat) {
+  const now = performance.now(), h = held[id];
+  if (!isDown) { delete held[id]; return false; }
+  if (!h) { held[id] = { next: now + 380 }; return true; }
+  if (repeat && now >= h.next) { h.next = now + 110; return true; }
+  return false;
+}
+function padLoop() {
+  const pads = [...(navigator.getGamepads?.() || [])].filter(Boolean);
+  const pad = pads[0];
+  if (padShown !== !!pad) {   // touch the page only when a controller comes or goes
+    padShown = !!pad;
+    $("#pad").classList.toggle("live", padShown);
+    $("#padText").textContent = padShown ? "Controller connected" : "No controller";
+  }
+  if (pad && !running && !launching && document.hasFocus()) {
+    const b = (i) => !!pad.buttons[i]?.pressed;
+    const ax = pad.axes[0] || 0, ay = pad.axes[1] || 0;
+    if (pressed("up", b(12) || ay < -0.55, true)) move("up");
+    if (pressed("down", b(13) || ay > 0.55, true)) move("down");
+    if (pressed("left", b(14) || ax < -0.55, true)) move("left");
+    if (pressed("right", b(15) || ax > 0.55, true)) move("right");
+    if (pressed("a", b(0))) { const el = document.activeElement; if (el?.matches("[data-nav]")) el.click(); else move("down"); }
+    if (pressed("b", b(1))) back();
+    if (pressed("y", b(3))) toggleFav(document.activeElement?.dataset.id);
+    if (pressed("lb", b(4))) cycleView(-1);
+    if (pressed("rb", b(5))) cycleView(1);
+  } else if (pad) {
+    for (const k in held) delete held[k];
+  }
+  requestAnimationFrame(padLoop);
+}
+
+function tick() {
+  $("#clock").textContent = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+}
+
+/* Android app: the native side forwards controller buttons and tells us when we're back on screen. */
+window.jlInput = (a) => {
+  if (running || launching || !lib?.games) return false;
+  if (["up", "down", "left", "right"].includes(a)) { move(a); return true; }
+  if (a === "a") { const el = document.activeElement; if (el?.matches("[data-nav]")) el.click(); else move("down"); return true; }
+  if (a === "b") return back();
+  if (a === "y") { toggleFav(document.activeElement?.dataset.id); return true; }
+  if (a === "lb") { cycleView(-1); return true; }
+  if (a === "rb") { cycleView(1); return true; }
+  return false;
+};
+window.jlProgress = (text) => {
+  const bar = $("#dlbar");
+  bar.textContent = text || "";
+  bar.classList.toggle("show", !!text);
+};
+window.jlResume = () => { launching = null; $("#overlay").classList.remove("show"); start(); };
+
+function renderSetup(s) {
+  const step = (done, title, text, action, label) => `<div class="setup-step ${done ? "done" : ""}">
+      <span class="check">${done ? "✓" : ""}</span><div><b>${title}</b><p>${text}</p></div>
+      ${!done && action ? `<button class="chip-btn" data-nav data-action="${action}">${label}</button>` : ""}</div>`;
+  setHTML($("#rail"), "");
+  setHTML($("#main"), `<div class="view-head"><h1>Let's get you set up</h1></div><div class="setup">
+    ${step(s.retroarch, "Game engine", "Your games run in the built-in EchoForge engine.", "", "")}
+    ${step(s.permission, "Allow access to your games", "Lets this app read the JLRetro folder on your phone.", "grantAccess", "Allow access")}
+    ${s.library ? step(true, "Your games", "", "", "") : `<div class="setup-step"><span class="check"></span><div><b>Your games</b>
+      <p>Copy your JLRetro folder from your PC to <code>${esc(s.root)}</code>.</p></div></div>`}
+    ${s.cores ? `<div class="setup-step"><span class="check">i</span><div><b>Emulators</b><p>These download by themselves the first time you play each system: ${esc(s.cores)}.</p></div></div>` : ""}
+  </div>`);
+  $("#main [data-nav]")?.focus();
+}
+
+// On a PC without RetroArch, the dashboard stops here until it's installed or pointed to.
+function renderRetroArchSetup(s) {
+  const busy = s.phase === "downloading" ? `Downloading RetroArch... ${s.pct}%`
+    : s.phase === "installing" ? "RetroArch's installer is open. Finish it there and this page moves on by itself." : "";
+  setHTML($("#rail"), "");
+  setHTML($("#main"), `<div class="view-head"><h1>Let's get you set up</h1></div><div class="setup">
+    <div class="setup-step"><span class="check"></span><div><b>Install RetroArch</b>
+      <p>${busy || "Your games run in RetroArch, a free emulator. This downloads its official installer (about 200 MB). Emulator cores download by themselves the first time you play each system."}</p>
+      ${s.error ? `<p style="color:var(--nes)">${esc(s.error)}</p>` : ""}</div>
+      <button class="chip-btn primary" data-nav data-setup="download" ${s.phase ? "disabled" : ""}>Download</button></div>
+    <div class="setup-step"><span class="check"></span><div><b>Already have it?</b>
+      <p>Paste the folder that holds retroarch.exe.${s.saved ? ` Last time it was in <code>${esc(s.saved)}</code>. If that's an unplugged drive, plug it back in.` : ""}</p>
+      <input class="link-input" id="raFolder" type="text" placeholder="C:\\RetroArch-Win64" autocomplete="off" data-nav></div>
+      <button class="chip-btn" data-nav data-setup="folder">Use this folder</button></div>
+  </div>`);
+}
+
+async function waitForRetroArch() {
+  let shown = "";
+  for (;;) {
+    const s = await api("/api/setup").catch(() => ({ ready: true }));
+    if (s.ready) { document.body.classList.remove("setup-mode"); return; }
+    document.body.classList.add("setup-mode");
+    const key = JSON.stringify(s);
+    if (key !== shown) { const typed = $("#raFolder")?.value || ""; renderRetroArchSetup(s); if (typed) $("#raFolder").value = typed; shown = key; }
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+}
+
+async function start() {
+  if (NATIVE) {
+    const s = await api("/api/status");
+    document.body.classList.toggle("setup-mode", !s.ready);
+    if (!s.ready) { lib = null; renderSetup(s); return; }
+  }
+  const first = !lib;
+  lib = await api("/api/library");
+  if (lib.version == null) lib.version = 0;
+  render(first || !document.activeElement || document.activeElement === document.body);
+}
+
+document.addEventListener("input", (e) => { if (e.target.id === "inboxFolder") e.target.dataset.typed = "1"; });
+
+document.addEventListener("click", (e) => {
+  const el = e.target.closest("[data-action]");
+  const input = el && el.dataset.input ? $(el.dataset.input) : null;
+  if (el && NATIVE) api("/api/action", { name: el.dataset.action, value: input ? input.value : "" }).then((r) => r.toast && toast(r.toast));
+  const setup = e.target.closest("[data-setup]");
+  if (setup?.dataset.setup === "download") api("/api/setup/download", {});
+  if (setup?.dataset.setup === "folder") api("/api/setup/folder", { path: $("#raFolder").value }).then((r) => r.error && toast(r.error));
+});
+
+if (NATIVE) document.body.classList.add("native");
+else window.addEventListener("pagehide", () => navigator.sendBeacon("/api/bye", new Blob(["{}"], { type: "text/plain" })));
+
+(async function init() {
+  if (!NATIVE) await waitForRetroArch();
+  await start();
+  tick(); setInterval(tick, 10000);
+  if (!NATIVE) {
+    setInterval(poll, 2000); requestAnimationFrame(padLoop);
+    refreshInbox(); setInterval(() => { if (!document.hidden) refreshInbox(); }, 10000);
+    refreshBackups();
+  }
+})();
+</script>
+</body>
+</html>

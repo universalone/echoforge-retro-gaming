@@ -1,0 +1,19 @@
+# Tools and build output
+.tools/
+packaging/dist/
+packaging/build/
+packaging/cache/
+__pycache__/
+.gradle/
+build/
+*.apk
+local.properties
+
+# Personal data, games and caches
+phone/
+state.json*
+state.tmp
+cache/
+backups/
+playlists-backup-*/
+retroarch.cfg.bak-*
