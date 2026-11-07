@@ -31,7 +31,7 @@ import rom_inbox  # noqa: E402
 import save_backup  # noqa: E402
 
 APP_NAME = "EchoForge Retro Gaming"
-APP_VERSION = "2.3.1"
+APP_VERSION = "2.3.2"
 APP_DIR = Path(__file__).resolve().parent
 # Installed, an update replaces the program files, so data lives in the user's profile.
 # Run from source, everything stays next to the script as it always has.
