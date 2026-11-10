@@ -20,7 +20,7 @@ python -m pip install --quiet --disable-pip-version-check --target "$stage\pytho
 if ($LASTEXITCODE) { throw 'pip failed' }
 Add-Content "$stage\python\python312._pth" 'Lib\site-packages'
 
-Copy-Item "$root\jl_retro.pyw", "$root\art_fetch.py", "$root\rom_inbox.py", "$root\save_backup.py", "$root\winutil.py", "$root\icon.ico" "$stage\app"
+Copy-Item "$root\jl_retro.pyw", "$root\art_fetch.py", "$root\rom_inbox.py", "$root\save_backup.py", "$root\winutil.py", "$root\synopsis.py", "$root\padquit.py", "$root\selfupdate.py", "$root\padwatch.ps1", "$root\icon.ico" "$stage\app"
 Copy-Item "$root\web\*" "$stage\app\web"
 Set-Content "$stage\app\installed.txt" $version  # tells jl_retro.pyw to keep its data in the user's profile
 

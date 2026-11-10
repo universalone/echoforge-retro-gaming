@@ -29,9 +29,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import art_fetch  # noqa: E402
 import rom_inbox  # noqa: E402
 import save_backup  # noqa: E402
+import synopsis  # noqa: E402
+import padquit  # noqa: E402
+import selfupdate  # noqa: E402
 
 APP_NAME = "EchoForge Retro Gaming"
-APP_VERSION = "2.3.2"
+APP_VERSION = "2.4.0"
 APP_DIR = Path(__file__).resolve().parent
 # Installed, an update replaces the program files, so data lives in the user's profile.
 # Run from source, everything stays next to the script as it always has.
@@ -120,7 +123,14 @@ REGIONS = {"USA": "USA", "Europe": "EUR", "Japan": "JPN", "Asia": "ASIA",
            "World": "WORLD", "JP-US": "JP/US", "Australia": "AUS"}
 DEFAULT_SETTINGS = {"fullscreen": True, "backupAfterPlay": True, "backupWeekly": True, "backupLast": 0,
                     "backupRoot": str(DATA_DIR / "Backups" if INSTALLED else save_backup.DEFAULT_ROOT),
-                    "inboxFolder": "", "fetchArt": True, "retroarchDir": ""}
+                    "inboxFolder": "", "fetchArt": True, "retroarchDir": "",
+                    "synopses": True, "padQuit": True, "padMenu": True, "autoUpdate": True, "updateChecked": 0,
+                    "skin": "retro", "skins": [], "scanlines": True,
+                    "homeLayout": "classic", "layouts": [], "home": None, "pinned": []}
+ABOUT_RETRY_SECONDS = 30 * 86400
+ABOUT_FILE_NAME = "synopses.json"
+about_lock = threading.Lock()
+update_info = {"last": None, "busy": False, "pct": 0, "error": ""}
 
 state_lock = threading.Lock()
 core_lock = threading.Lock()
@@ -237,6 +247,36 @@ def update_settings(**changes):
         return data["settings"]
 
 
+ID = re.compile(r"[\w-]{1,40}")
+SETTING_BOOLS = ("fullscreen", "backupAfterPlay", "backupWeekly", "fetchArt", "synopses", "padQuit", "padMenu",
+                 "autoUpdate", "scanlines")
+
+
+def small_dict(d, limit=1500):
+    """Plain data only (skins and layouts): short, JSON-safe, no nesting deeper than a list of words."""
+    if not isinstance(d, dict) or len(json.dumps(d)) > limit:
+        return None
+    ok = lambda v: isinstance(v, (str, int, float, bool)) or v is None or (  # noqa: E731
+        isinstance(v, list) and len(v) <= 20 and all(isinstance(x, (str, int, float, bool)) for x in v))
+    return {str(k)[:30]: v for k, v in d.items() if ok(v)}
+
+
+def clean_settings(body):
+    """The settings the dashboard may change, each checked. The page checks skins again before using them."""
+    changes = {k: bool(body[k]) for k in SETTING_BOOLS if k in body}
+    for k in ("skin", "homeLayout"):
+        if isinstance(body.get(k), str) and ID.fullmatch(body[k]):
+            changes[k] = body[k]
+    for k, most in (("skins", 30), ("layouts", 20)):
+        if isinstance(body.get(k), list):
+            changes[k] = [c for c in (small_dict(x) for x in body[k][:most]) if c]
+    if "home" in body:
+        changes["home"] = small_dict(body["home"]) if body["home"] else None
+    if isinstance(body.get("pinned"), list):
+        changes["pinned"] = [x for x in body["pinned"][:60] if isinstance(x, str) and re.fullmatch(r"[0-9a-f]{12}", x)]
+    return changes
+
+
 def running_game():
     proc = game_proc["proc"]
     if proc and proc.poll() is None:
@@ -308,9 +348,10 @@ def launch(game, fullscreen):
         return False, err
     args =[str(RA_EXE)] + (["-f"] if fullscreen else []) + ["-L", game["core"], game["path"]]
     flags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
-    game_proc["proc"] = subprocess.Popen(args, cwd=str(RA_DIR), creationflags=flags)
+    proc = game_proc["proc"] = subprocess.Popen(args, cwd=str(RA_DIR), creationflags=flags)
     game_proc["game"] = game
-    threading.Thread(target=bring_to_front, args=(game_proc["proc"].pid,), daemon=True).start()
+    threading.Thread(target=bring_to_front, args=(proc.pid,), daemon=True).start()
+    watch_pad(proc)
     with state_lock:
         data = read_state()
         entry = data["history"].get(game["id"], {"plays": 0})
@@ -319,6 +360,111 @@ def launch(game, fullscreen):
         data["history"][game["id"]] = entry
         write_state(data)
     return True, ""
+
+
+def watch_pad(proc):
+    """Select + Start while the game runs: a tap opens RetroArch's Quick Menu, holding it for 2 seconds quits."""
+    settings = read_state()["settings"]
+    if sys.platform != "win32" or not (settings.get("padQuit", True) or settings.get("padMenu", True)) or not padquit.SCRIPT.exists():
+        return
+    quitting = []
+
+    def on_quit():
+        if settings.get("padQuit", True) and not quitting:
+            quitting.append(1)
+            threading.Thread(target=padquit.close_gently, args=(proc.pid,), kwargs={"wait": lambda: proc.poll() is not None},
+                             daemon=True).start()
+
+    try:
+        w = padquit.Watcher(proc.pid, on_quit=on_quit)
+    except OSError:
+        return
+    if settings.get("padMenu", True):
+        w.on_menu = w.open_menu
+
+    def end_with_game():
+        proc.wait()
+        w.stop()
+    threading.Thread(target=end_with_game, daemon=True).start()
+
+
+# ---- Synopses (Wikipedia), kept in the cache so they also work offline ----
+
+def about_store():
+    try:
+        return json.loads((CACHE_DIR / ABOUT_FILE_NAME).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+
+def about_save(store):
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    tmp = CACHE_DIR / (ABOUT_FILE_NAME + ".tmp")
+    tmp.write_text(json.dumps(store), encoding="utf-8")
+    tmp.replace(CACHE_DIR / ABOUT_FILE_NAME)
+
+
+def system_full(system_id):
+    return next((s["full"] for s in SYSTEMS if s["id"] == system_id), "")
+
+
+def fetch_about(game, force=False):
+    """Looks a game up on Wikipedia unless it's known, a recent miss, or marked as the wrong game. Returns the entry."""
+    with about_lock:
+        entry = about_store().get(game["id"])
+    if entry and not force and ("text" in entry or entry.get("wrong") or time.time() - entry.get("tried", 0) < ABOUT_RETRY_SECONDS):
+        return entry
+    stem = Path(game["path"].split("#")[0]).stem
+    r = synopsis.lookup([game["title"], clean_title(stem)[0]], system_full(game["system"]))
+    new = {k: r[k] for k in ("text", "title", "url", "year", "genre", "dev", "pub") if k in r} if r.get("ok") else {}
+    new["tried"] = int(time.time())
+    with about_lock:
+        store = about_store()
+        store[game["id"]] = new
+        about_save(store)
+    return new
+
+
+def about_worker():
+    """Looks up every game in the background, one at a time. Misses are retried after 30 days."""
+    if not read_state()["settings"].get("synopses", True):
+        return
+    for g in list(Handler.games):
+        with about_lock:
+            entry = about_store().get(g["id"])
+        if entry and ("text" in entry or entry.get("wrong") or time.time() - entry.get("tried", 0) < ABOUT_RETRY_SECONDS):
+            continue
+        if not read_state()["settings"].get("synopses", True):
+            return
+        try:
+            fetch_about(g)
+        except (OSError, ValueError):
+            return  # offline or Wikipedia is down: try again next start
+        time.sleep(0.3)
+
+
+# ---- Updates from GitHub ----
+
+def check_update():
+    update_info["last"] = selfupdate.check(APP_VERSION)
+    update_settings(updateChecked=int(time.time()))
+    return update_info["last"]
+
+
+def install_update():
+    """Downloads the newer installer, checks it, starts it and closes this app so it can replace the program files."""
+    last = update_info["last"]
+    if not last or not last.get("update"):
+        last = check_update()
+    if not last.get("ok"):
+        update_info.update(busy=False, error=last.get("error", ""))
+        return
+    try:
+        path = selfupdate.download(last["latest"], DATA_DIR / "downloads", lambda pct: update_info.update(pct=pct))
+        os.startfile(path)  # the installer closes this app itself and asks before replacing anything
+        update_info.update(busy=False, pct=100)
+    except (OSError, ValueError) as e:
+        update_info.update(busy=False, pct=0, error=str(e))
 
 
 # ---- Small covers for the grid: full box art is often 500 KB+ per game ----
@@ -561,7 +707,26 @@ class Handler(BaseHTTPRequestHandler):
                     if small:
                         return self.send_bytes(small, "image/jpeg", "max-age=604800")
                 return self.send_bytes(game[field].read_bytes(), "image/png", "max-age=604800")
+        if route.startswith("/api/about/"):
+            game = self.by_id.get(route[len("/api/about/"):])
+            if not game:
+                return self.send_json({"ok": False}, 404)
+            own = read_state().get("about", {}).get(game["id"], {})
+            entry = {}
+            if read_state()["settings"].get("synopses", True) and not own.get("wrong"):
+                try:
+                    entry = fetch_about(game)
+                except (OSError, ValueError):
+                    with about_lock:
+                        entry = about_store().get(game["id"], {})
+            return self.send_json({"ok": True, "own": own.get("text", ""), "wrong": bool(own.get("wrong")),
+                                   **({} if own.get("wrong") else {k: v for k, v in entry.items() if k != "tried"})})
+        if route == "/api/update":
+            return self.send_json({"current": APP_VERSION, "installed": INSTALLED, "last": update_info["last"],
+                                   "busy": update_info["busy"], "pct": update_info["pct"], "error": update_info["error"]})
         files = {"/": ("index.html", "text/html; charset=utf-8"),
+                 "/skins.js": ("skins.js", "text/javascript; charset=utf-8"),
+                 "/custom.js": ("custom.js", "text/javascript; charset=utf-8"),
                  "/icon.png": ("icon.png", "image/png"),
                  "/logo.svg": ("logo.svg", "image/svg+xml"),
                  "/PressStart2P.ttf": ("PressStart2P.ttf", "font/ttf")}
@@ -574,7 +739,7 @@ class Handler(BaseHTTPRequestHandler):
         # Only the dashboard itself may trigger actions.
         if not self.host_ok() or self.headers.get("Origin") != ORIGIN:
             return self.send_error(403)
-        length = min(int(self.headers.get("Content-Length") or 0), 10000)
+        length = min(int(self.headers.get("Content-Length") or 0), 100000)
         try:
             body = json.loads(self.rfile.read(length) or b"{}")
         except ValueError:
@@ -629,9 +794,55 @@ class Handler(BaseHTTPRequestHandler):
                 write_state(data)
             return self.send_json({"ok": True, "series": series})
         if route == "/api/settings":
-            allowed = {"fullscreen": bool, "backupAfterPlay": bool, "backupWeekly": bool, "fetchArt": bool}
-            changes = {k: t(body[k]) for k, t in allowed.items() if k in body}
-            return self.send_json({"ok": True, "settings": update_settings(**changes)})
+            changes = clean_settings(body)
+            settings = update_settings(**changes)
+            if changes.get("synopses"):
+                threading.Thread(target=about_worker, daemon=True).start()
+            return self.send_json({"ok": True, "settings": settings})
+        if route == "/api/about":
+            # Your own text for a game ("" goes back to Wikipedia's), "wrong" for a mismatch, or "lookup" to ask again.
+            game = by_id.get(body.get("id"))
+            if not game:
+                return self.send_json({"ok": False}, 404)
+            with state_lock:
+                data = read_state()
+                about = data.setdefault("about", {})
+                mine = about.get(game["id"], {})
+                if "text" in body:
+                    text = str(body["text"]).strip()[:4000]
+                    mine = {**mine, "text": text} if text else {k: v for k, v in mine.items() if k != "text"}
+                if body.get("wrong"):
+                    mine["wrong"] = True
+                if body.get("lookup"):
+                    mine.pop("wrong", None)
+                if mine:
+                    about[game["id"]] = mine
+                else:
+                    about.pop(game["id"], None)
+                write_state(data)
+            if body.get("wrong"):
+                with about_lock:
+                    store = about_store()
+                    store[game["id"]] = {"wrong": True, "tried": int(time.time())}
+                    about_save(store)
+            entry = {}
+            if body.get("lookup"):
+                try:
+                    entry = fetch_about(game, force=True)
+                except (OSError, ValueError) as e:
+                    return self.send_json({"ok": False, "error": f"Couldn't reach Wikipedia ({e})."})
+            return self.send_json({"ok": True, "found": "text" in entry})
+        if route == "/api/update/check":
+            return self.send_json(check_update())
+        if route == "/api/update/install":
+            if running_game():
+                return self.send_json({"ok": False, "error": "Quit your game first."})
+            if not INSTALLED:
+                return self.send_json({"ok": False, "error": "This copy runs from its source folder. Update it with git, or install it."})
+            if not update_info["busy"]:
+                update_info.update(busy=True, pct=0, error="")
+                threading.Thread(target=install_update, daemon=True).start()
+            return self.send_json({"ok": True})
         if route == "/api/inbox/folder":
             folder = str(body.get("path", "")).strip().strip('"')
             if not folder or not Path(folder).is_dir():
@@ -714,6 +925,8 @@ def watchdog(server):
 
 def startup_jobs():
     settings = read_state()["settings"]
+    if INSTALLED and settings.get("autoUpdate", True) and time.time() - settings.get("updateChecked", 0) > 86400:
+        check_update()  # once a day; nothing installs until Update now is pressed
     if settings.get("backupWeekly", True) and time.time() - settings.get("backupLast", 0) > save_backup.WEEK:
         run_backup("weekly")
     for g in list(Handler.games):  # make the grid's small covers ahead of time
@@ -723,6 +936,7 @@ def startup_jobs():
         except OSError:
             pass
     art_worker()
+    about_worker()
 
 
 def main():
