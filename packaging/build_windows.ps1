@@ -1,5 +1,8 @@
-# Builds packaging\dist\EchoForge-Retro-Gaming-Setup-<version>.exe from Python's official signed runtime plus Retro's own
-# plain scripts. No wrapper .exe: PyInstaller's was flagged by Windows Defender (Trojan:Win32/Bearfoos.A!ml) in November 2026.
+# Builds packaging\dist\EchoForge-Retro-Gaming-<version>-win64.zip from Python's official signed runtime plus Retro's own
+# plain scripts. No program of our own at all: a PyInstaller wrapper (2.3) and then an NSIS installer (2.4, 2.5 tests) were
+# both flagged by Windows Defender's machine learning as Trojan:Win32/Bearfoos.A!ml, a false alarm that hits unsigned
+# programs that unpack and run Python. EchoForge installs the zip (or Retro updates itself from it); someone without
+# EchoForge unzips it and starts it once, and Retro makes its own shortcuts and Apps entry (jl_retro.pyw self_register).
 $root = Split-Path $PSScriptRoot -Parent
 $PYTHON_VERSION = '3.12.10'
 $stage = "$PSScriptRoot\dist\stage"
@@ -24,9 +27,24 @@ Copy-Item "$root\jl_retro.pyw", "$root\art_fetch.py", "$root\rom_inbox.py", "$ro
 Copy-Item "$root\web\*" "$stage\app\web"
 Set-Content "$stage\app\installed.txt" $version  # tells jl_retro.pyw to keep its data in the user's profile
 
-$nsis = Get-ChildItem "$env:LOCALAPPDATA\electron-builder\Cache\nsis-*\*\Bin\makensis.exe" | Select-Object -First 1
-if (-not $nsis) { throw 'makensis not found' }
-Set-Location $PSScriptRoot
-& $nsis.FullName /V2 "/DVERSION=$version" retro.nsi
-if ($LASTEXITCODE) { throw 'NSIS failed' }
-Get-Item "dist\EchoForge-Retro-Gaming-Setup-$version.exe" | Select-Object Name, @{n='MB';e={[math]::Round($_.Length/1MB,1)}}, LastWriteTime
+# For someone who unzips it by hand: a way to start it, and what to do.
+Set-Content "$stage\Start EchoForge Retro Gaming.cmd" "@echo off`r`nstart `"`" `"%~dp0python\pythonw.exe`" `"%~dp0app\jl_retro.pyw`"" -Encoding ascii
+Set-Content "$stage\READ ME FIRST.txt" @"
+EchoForge Retro Gaming $version
+
+The easy way: install it from EchoForge (press RETRO FORGE at the top).
+
+By hand:
+1. Move this folder where you want it to stay, for example %LOCALAPPDATA%\Programs\EchoForge Retro Gaming.
+2. Double-click "Start EchoForge Retro Gaming".
+   The first time, it adds itself to the Start menu, the Desktop and Windows' list of apps (Settings > Apps),
+   where you can uninstall it later. Your favorites, history and settings are kept in your user profile.
+
+EchoForge Retro Gaming doesn't include or download games, firmware or BIOS files. Use games you own.
+"@ -Encoding ascii
+
+$zipOut = "$PSScriptRoot\dist\EchoForge-Retro-Gaming-$version-win64.zip"
+if (Test-Path $zipOut) { Remove-Item $zipOut -Force }
+python -I -c "import sys, zipfile, pathlib; s = pathlib.Path(sys.argv[1]); z = zipfile.ZipFile(sys.argv[2], 'w', zipfile.ZIP_DEFLATED, compresslevel=9); [z.write(p, p.relative_to(s).as_posix()) for p in sorted(s.rglob('*')) if p.is_file()]; z.close()" $stage $zipOut
+if ($LASTEXITCODE) { throw 'zip failed' }
+Get-Item $zipOut | Select-Object Name, @{n='MB';e={[math]::Round($_.Length/1MB,1)}}, LastWriteTime

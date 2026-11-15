@@ -12,9 +12,19 @@ A Windows game library for [RetroArch](https://www.retroarch.com): browse your g
 - **Home dashboards** (Settings → Home dashboard): Classic, Couch, Collector, Minimal and Discover, or your own: turn sections on or off, reorder them, choose the cover size, pair a skin, and check it in Preview. Pin to Home on any game.
 - **Synopses** (`synopsis.py`): each game page shows the first paragraph or two of the game's Wikipedia article, with year, genre, developer and publisher from Wikidata and a From Wikipedia link (CC BY-SA). Only the game's name is sent. A match needs a game article with the same name; when an original and a remake share it, the one that mentions the system wins, then the oldest. You can write your own, look it up again, or mark a match as the wrong game.
 - **Quit and menu from the controller** (`padquit.py`, `padwatch.ps1`): during a game, tap Select + Start for RetroArch's Quick Menu, or hold them for 2 seconds to close the game the same way as its window's close button, so RetroArch saves first. It's forced only if RetroArch doesn't close within 10 seconds.
-- **Updates itself** (`selfupdate.py`): once a day the installed app checks this project's GitHub releases and offers Update now. The installer is checked against GitHub's SHA-256 before it runs.
+- **Updates itself** (`selfupdate.py`): once a day the installed app checks this project's GitHub releases and offers Update now. The new version's zip is checked against GitHub's SHA-256, unpacked beside the program, and the new copy swaps itself in (`--finish-update`) and starts.
+- **EchoForge's look and layout**: the same top bar, left panel (systems grouped by era, with colored chips) and game pages as EchoForge, with a Back button; the EchoForge skin is the default.
+- **Games on the middle screen**: with three monitors, or one screen spanned across three (NVIDIA Surround / AMD Eyefinity), RetroArch opens on the middle one in a borderless 1920 × 1080 window (settings given with `--appendconfig`, so `retroarch.cfg` isn't changed). Settings → Games.
 
 If RetroArch isn't installed, the app offers its official installer. Box art and screenshots come from the libretro thumbnails library, can be turned off in Settings and aren't included here.
+
+## Install
+
+The easy way is from [EchoForge](https://github.com/universalone/echoforge): press **RETRO FORGE** and it installs this app from its GitHub releases.
+
+By hand: download `EchoForge-Retro-Gaming-<version>-win64.zip` from [Releases](https://github.com/universalone/echoforge-retro-gaming/releases), unzip it where it should stay (for example `%LOCALAPPDATA%\Programs\EchoForge Retro Gaming`) and double-click **Start EchoForge Retro Gaming**. The first time, it adds its Start menu and Desktop shortcuts and its entry in Settings → Apps, where it can be uninstalled. Favorites, history and settings stay in your user profile.
+
+Since 2.5 there's no installer program: Windows Defender's machine learning flagged the installer (an unsigned program that unpacks and runs Python) as `Trojan:Win32/Bearfoos.A!ml`, a false alarm. The zip holds only Python's own signed runtime and this project's plain scripts.
 
 ## Run or build
 
@@ -22,7 +32,7 @@ Run from source with Python 3.12 on Windows:
 
     pythonw jl_retro.pyw
 
-Build the installer, which needs NSIS:
+Build the Windows zip:
 
     powershell -ExecutionPolicy Bypass -File packaging\build_windows.ps1
 

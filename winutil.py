@@ -105,3 +105,86 @@ def retroarch_game_screen_cfg(rect):
         'video_window_save_positions = "true"', 'video_window_show_decorations = "false"', 'ui_menubar_enable = "false"',
         f'video_windowed_position_x = "{x}"', f'video_windowed_position_y = "{y}"',
         f'video_windowed_position_width = "{w}"', f'video_windowed_position_height = "{h}"']) + "\n"
+
+
+# ---- Install, update and uninstall without an installer program (2.5) ----
+# Retro ships as a zip (an installer was flagged by Defender's machine learning). EchoForge, an update, or someone
+# who unzipped it puts the files in place; Retro then registers itself here: the uninstall entry Windows lists under
+# Apps (and the Hub and EchoForge use to find it), and the Desktop and Start menu shortcuts.
+UNINST_KEY = r"Software\Microsoft\Windows\CurrentVersion\Uninstall\EchoForgeRetroGaming"
+APP_NAME = "EchoForge Retro Gaming"
+
+
+def _shortcut(lnk, target, args, icon):
+    """A Windows shortcut through the shell's own WScript.Shell object."""
+    import subprocess
+    ps = ("$s = (New-Object -ComObject WScript.Shell).CreateShortcut($args[0]); $s.TargetPath = $args[1]; "
+          "$s.Arguments = $args[2]; $s.IconLocation = $args[3]; $s.WorkingDirectory = (Split-Path $args[1]); $s.Save()")
+    subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-Command", ps, str(lnk), str(target), args, str(icon)],
+                   creationflags=0x08000000, timeout=30, check=False)  # CREATE_NO_WINDOW
+
+
+def _folder(name):
+    """Desktop or Programs (Start menu) folder of this user."""
+    import subprocess
+    out = subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-Command", f"[Environment]::GetFolderPath('{name}')"],
+                         capture_output=True, text=True, creationflags=0x08000000, timeout=30)
+    return Path(out.stdout.strip()) if out.stdout.strip() else None
+
+
+def registered_location():
+    """InstallLocation of the uninstall entry, or None."""
+    if sys.platform != "win32":
+        return None
+    import winreg
+    try:
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, UNINST_KEY) as k:
+            return winreg.QueryValueEx(k, "InstallLocation")[0]
+    except OSError:
+        return None
+
+
+def register_install(root, version, shortcuts=None):
+    """Writes the uninstall entry for the copy in `root` (the folder holding app/ and python/). shortcuts: True makes the
+    Desktop and Start menu shortcuts, None keeps whatever there is (an update)."""
+    if sys.platform != "win32":
+        return
+    import winreg
+    root = Path(root)
+    pyw, script, icon = root / "python" / "pythonw.exe", root / "app" / "jl_retro.pyw", root / "app" / "icon.ico"
+    run = f'"{pyw}" "{script}"'
+    with winreg.CreateKey(winreg.HKEY_CURRENT_USER, UNINST_KEY) as k:
+        for name, value in (("DisplayName", APP_NAME), ("DisplayVersion", version), ("Publisher", "EchoForge"),
+                            ("DisplayIcon", str(icon)), ("InstallLocation", str(root)),
+                            ("UninstallString", run + " --uninstall"), ("QuietUninstallString", run + " --uninstall")):
+            winreg.SetValueEx(k, name, 0, winreg.REG_SZ, value)
+        for name in ("NoModify", "NoRepair"):
+            winreg.SetValueEx(k, name, 0, winreg.REG_DWORD, 1)
+        if shortcuts:
+            for folder in ("Desktop", "Programs"):
+                where = _folder(folder)
+                if where:
+                    _shortcut(where / f"{APP_NAME}.lnk", pyw, f'"{script}"', icon)
+            winreg.SetValueEx(k, "MadeShortcuts", 0, winreg.REG_DWORD, 1)
+
+
+def unregister_install():
+    """Removes the uninstall entry and the shortcuts Retro made (never a same-named shortcut of the user's)."""
+    if sys.platform != "win32":
+        return
+    import winreg
+    made = 0
+    try:
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, UNINST_KEY) as k:
+            made = winreg.QueryValueEx(k, "MadeShortcuts")[0]
+    except OSError:
+        pass
+    if made == 1:
+        for folder in ("Desktop", "Programs"):
+            where = _folder(folder)
+            if where:
+                (where / f"{APP_NAME}.lnk").unlink(missing_ok=True)
+    try:
+        winreg.DeleteKey(winreg.HKEY_CURRENT_USER, UNINST_KEY)
+    except OSError:
+        pass

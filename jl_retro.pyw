@@ -40,6 +40,7 @@ APP_DIR = Path(__file__).resolve().parent
 # Installed, an update replaces the program files, so data lives in the user's profile.
 # Run from source, everything stays next to the script as it always has.
 INSTALLED = (APP_DIR / "installed.txt").exists()
+ROOT = APP_DIR.parent  # the program folder: app and python (an installed copy)
 WEB_DIR = APP_DIR / "web"
 DATA_DIR = Path(os.environ.get("EF_RETRO_DATA") or (Path(os.environ["LOCALAPPDATA"]) / APP_NAME if INSTALLED else APP_DIR))
 CACHE_DIR = DATA_DIR / "cache"
@@ -467,7 +468,8 @@ def check_update():
 
 
 def install_update():
-    """Downloads the newer installer, checks it, starts it and closes this app so it can replace the program files."""
+    """Downloads the newer version's zip, checks it, unpacks it beside the program, then starts the new copy to put
+    itself in place (--finish-update) and closes this one, whose files it replaces."""
     last = update_info["last"]
     if not last or not last.get("update"):
         last = check_update()
@@ -476,8 +478,13 @@ def install_update():
         return
     try:
         path = selfupdate.download(last["latest"], DATA_DIR / "downloads", lambda pct: update_info.update(pct=pct))
-        os.startfile(path)  # the installer closes this app itself and asks before replacing anything
+        if not INSTALLED:
+            raise ValueError("This copy isn't installed, so it can't update itself. Download the new zip instead.")
+        new = selfupdate.unpack(path, ROOT)
+        subprocess.Popen([str(new / "python" / "pythonw.exe"), str(new / "app" / "jl_retro.pyw"), "--finish-update", str(ROOT)],
+                         cwd=str(new / "app"))
         update_info.update(busy=False, pct=100)
+        threading.Thread(target=lambda: (time.sleep(1.0), os._exit(0)), daemon=True).start()  # the new copy takes over
     except (OSError, ValueError) as e:
         update_info.update(busy=False, pct=0, error=str(e))
 
@@ -892,6 +899,11 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send_json({"ok": False, "error": "RetroArch wasn't found."})
             settings = read_state()["settings"]
             return self.send_json(save_backup.restore(RA_DIR, settings["backupRoot"], str(body.get("name", ""))))
+        if route == "/api/quit":
+            # The installer closes the running copy this way (jl_retro.pyw --quit) before replacing its files.
+            self.send_json({"ok": True})
+            threading.Thread(target=lambda: (time.sleep(0.3), os._exit(0)), daemon=True).start()
+            return
         if route == "/api/bye":
             # Window closed: shut down soon unless it reconnects (a reload).
             last_ping[0] = time.time() - IDLE_SHUTDOWN_SECONDS + 5
@@ -967,11 +979,97 @@ def startup_jobs():
     about_worker()
 
 
+def finish_update(target):
+    """Runs from the new copy in <program>/_update: waits for the old copy to close, swaps the program's app and
+    python folders for its own (each copied whole first, then swapped, so a failure leaves the old one working),
+    refreshes the uninstall entry and starts the updated program."""
+    target, src = Path(target), APP_DIR.parent
+    if not (target / "app").exists() or target.resolve() == src.resolve():
+        return
+    for _ in range(100):  # up to 20 seconds
+        if not already_running():
+            break
+        time.sleep(0.2)
+    time.sleep(1.0)
+    for sub in ("python", "app"):
+        fresh, old = target / f"{sub}.new", target / f"{sub}.old"
+        shutil.rmtree(fresh, ignore_errors=True)
+        shutil.copytree(src / sub, fresh)
+        for _ in range(15):
+            try:
+                if (target / sub).exists():
+                    shutil.rmtree(old, ignore_errors=True)
+                    (target / sub).rename(old)
+                fresh.rename(target / sub)
+                break
+            except OSError:
+                time.sleep(1.0)
+        shutil.rmtree(old, ignore_errors=True)
+    version = (target / "app" / "installed.txt").read_text(encoding="utf-8").strip()
+    winutil.register_install(target, version, shortcuts=None)
+    subprocess.Popen([str(target / "python" / "pythonw.exe"), str(target / "app" / "jl_retro.pyw")], cwd=str(target / "app"))
+
+
+def uninstall():
+    """--uninstall (Windows Apps list): closes the running copy, removes the shortcuts Retro made and the uninstall
+    entry, then the program folder once this copy has exited. Favorites, history, settings and backups stay in the
+    user's profile, as before."""
+    if already_running():
+        quit_running()
+    winutil.unregister_install()
+    root = ROOT.resolve()
+    if INSTALLED and (root / "app" / "jl_retro.pyw").exists() and (root / "python").exists():
+        subprocess.Popen(f'cmd /c ping -n 3 127.0.0.1 >nul & rmdir /s /q "{root}"', creationflags=0x08000000 | 0x00000008)
+
+
+def self_register():
+    """An installed copy that Windows doesn't know about yet (unzipped by hand, or put in place by EchoForge) writes
+    its uninstall entry and makes its shortcuts once; a leftover _update folder from an update is removed."""
+    if not INSTALLED or sys.platform != "win32" or ROOT.name == "_update":
+        return
+    shutil.rmtree(ROOT / "_update", ignore_errors=True)
+    try:
+        here = str(ROOT.resolve())
+        where = winutil.registered_location()
+        if not where or Path(where).resolve() != Path(here):
+            winutil.register_install(ROOT, APP_VERSION, shortcuts=not where)
+    except OSError:
+        pass
+
+
+def quit_running():
+    """--quit: asks the copy that's running to close (the installer uses this before replacing files), then waits
+    up to 5 seconds for it to go."""
+    try:
+        req = urllib.request.Request(ORIGIN + "/api/quit", data=b"{}", method="POST",
+                                     headers={"Origin": ORIGIN, "Content-Type": "application/json"})
+        urllib.request.urlopen(req, timeout=2).read()
+    except OSError:
+        return
+    for _ in range(25):
+        if not already_running():
+            return
+        time.sleep(0.2)
+
+
 def main():
+    if "--finish-update" in sys.argv:
+        return finish_update(sys.argv[sys.argv.index("--finish-update") + 1])
+    if "--uninstall" in sys.argv:
+        return uninstall()
+    if "--install" in sys.argv:  # EchoForge after putting the files in place: entry and shortcuts
+        if INSTALLED:
+            winutil.register_install(ROOT, APP_VERSION, shortcuts=True)
+        return
+    if "--quit" in sys.argv:
+        if already_running():
+            quit_running()
+        return
     if already_running():
         if "--no-window" not in sys.argv:
             open_window()
         return
+    self_register()
     found = find_retroarch()
     if found:
         use_retroarch(found, starting=True)
