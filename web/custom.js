@@ -7,7 +7,9 @@ const SK = window.EF_SKINS;
 // Retro's own fonts on top of EchoForge's Windows fonts.
 SK.FONTS.pixel = '"Press Start 2P", Consolas, monospace'; SK.FONT_NAMES.pixel = "Press Start 2P (arcade)";
 SK.FONTS.inter = '"Inter", "Segoe UI", system-ui, sans-serif'; SK.FONT_NAMES.inter = "Inter";
+// "EchoForge" is the default: EchoForge's own look (its colors, Bahnschrift headings, Segoe text, cut corners).
 const RETRO_PRESETS = [
+  { id: "forge", name: "EchoForge", a1: "#ffd27a", a2: "#ff6a1f", a3: "#e5145f", bg: "#0b0c10", bg2: "#101117", font: "forge", bodyFont: "segoe", corners: "cut", cornerSize: 14, border: 1 },
   { id: "retro", name: "Retro Arcade", a1: "#ffd27a", a2: "#ff6a1f", a3: "#e5145f", bg: "#0b0c10", bg2: "#16171f", font: "pixel", bodyFont: "inter", cornerSize: 14, border: 2 },
   { id: "pocket", name: "Pocket Green", a1: "#e0f8d0", a2: "#88c070", a3: "#346856", bg: "#081820", bg2: "#0f2a2e", font: "pixel", bodyFont: "retro", corners: "square", cornerSize: 3, border: 2 },
   { id: "amber", name: "CRT Amber", a1: "#ffd98a", a2: "#ffb000", a3: "#ff6a00", bg: "#0d0800", bg2: "#1a1206", font: "retro", bodyFont: "retro", cornerSize: 6, border: 2 },
@@ -24,7 +26,7 @@ function mixHex(a, b, t) { const A = SK.hexToRgb(a), B = SK.hexToRgb(b); return 
 function mySkins() { return (lib?.settings?.skins || []).map(SK.validate).filter(Boolean); }
 function findSkin(id) { return RETRO_PRESETS.find((p) => p.id === id) || mySkins().find((p) => p.id === id) || RETRO_PRESETS[0]; }
 let skinDraft = null;   // the skin being customized, shown live
-function currentSkin() { return skinDraft || findSkin(homeLayout()?.skin || lib?.settings?.skin || "retro"); }
+function currentSkin() { return skinDraft || findSkin(homeLayout()?.skin || lib?.settings?.skin || "forge"); }
 function fontStack(key, custom, fallback) { return (custom && SK.FONT_NAME.test(custom) ? `"${custom}", ` : "") + (SK.FONTS[key] || SK.FONTS[fallback]); }
 
 function applySkin(sk = currentSkin()) {
@@ -37,6 +39,9 @@ function applySkin(sk = currentSkin()) {
     "--rs": String(sk.corners === "square" ? 0.15 : (sk.cornerSize ?? 14) / 14), "--bw": `${sk.border ?? 2}px`, "--bstyle": sk.borderStyle || "solid",
   };
   for (const [k, val] of Object.entries(v)) r.setProperty(k, val);
+  r.setProperty("--cut", `${Math.max(4, Math.min(22, sk.cornerSize ?? 14))}px`); // EchoForge's cut corners
+  document.body.classList.toggle("cut", sk.corners === "cut");
+  document.body.classList.toggle("forge", sk.id === "forge"); // EchoForge's calmer look: no arcade animations
   document.body.classList.toggle("noscan", lib?.settings?.scanlines === false);
   const wall = document.getElementById("bgWall");
   if (wall) {
@@ -101,7 +106,7 @@ function homeLayout() {
   const id = lib?.settings?.homeLayout || "classic";
   return HOME_PRESETS.find((p) => p.id === id) || myLayouts().find((p) => p.id === id) || HOME_PRESETS[0];
 }
-function pinnedGames() { return (lib.settings.pinned || []).map(byId).filter(Boolean); }
+function pinnedGames() { return (lib.settings?.pinned || []).map(byId).filter(Boolean); }
 function picks(n = 12) {
   const day = Math.floor(Date.now() / 864e5);   // new picks every day
   return lib.games.filter((g) => g.art).map((g) => [([...g.id].reduce((a, c) => a * 31 + c.charCodeAt(0), day) >>> 0) % 1e9, g])
@@ -248,9 +253,10 @@ function gamesTab() {
   const s = lib.settings;
   return `<p class="note">How games start and what EchoForge Retro Gaming does in the background.</p>
     <div class="section-title" style="margin-top:0">During a game</div>
-    <div class="toggles">${sw("padMenu", "Tap Select + Start: RetroArch menu", s.padMenu !== false)}${sw("padQuit", "Hold Select + Start: quit to Retro", s.padQuit !== false)}${sw("fullscreen", "Full-screen games", s.fullscreen !== false)}</div>
+    <div class="toggles">${sw("padMenu", "Tap Select + Start: RetroArch menu", s.padMenu !== false)}${sw("padQuit", "Hold Select + Start: quit to Retro", s.padQuit !== false)}${sw("fullscreen", "Full-screen games", s.fullscreen !== false)}${sw("gameScreen", "Games on the middle screen", s.gameScreen !== false)}</div>
     <p class="note">Tap Select + Start (Back + Start on Xbox, Share + Options on PlayStation) for RetroArch's Quick Menu: save and load states, screenshots, controls and more.
       Hold them for 2 seconds to close the game; RetroArch saves first. On the keyboard, F1 opens the menu and Esc twice quits.</p>
+    <p class="note">Games on the middle screen: with three screens (or one wide screen made of three, like NVIDIA Surround), games open on the middle one in a borderless 1920 &times; 1080 window instead of stretching across all of them.</p>
     <div class="section-title">Your library</div>
     <div class="toggles">${sw("synopses", "Game synopses from Wikipedia", s.synopses !== false)}${sw("fetchArt", "Download missing box art", s.fetchArt !== false)}</div>
     <p class="note">Synopses show what a game is about, with its year, genre and developer, on the game's page. Only the game's name is sent to Wikipedia and Wikidata.</p>`;
@@ -265,9 +271,9 @@ function aboutTab() {
     ${l ? `<p class="note">${l.ok ? (l.update ? "" : `You're up to date.${l.latest ? ` The newest release on GitHub is ${esc(l.latest.version)}.` : ""}`) : esc(l.error)}</p>` : ""}`;
 }
 function viewSettings() {
-  const body = { look: lookTab, home: homeTabHTML, games: gamesTab, about: aboutTab }[setTab] || lookTab;
+  const body = (NATIVE ? { look: lookTab, home: homeTabHTML } : { look: lookTab, home: homeTabHTML, games: gamesTab, about: aboutTab })[setTab] || lookTab;
   return `<div class="view-head"><h1>Settings</h1></div>
-    <div class="toggles">${tabBtn("look", "Skin", setTab)}${tabBtn("home", "Home dashboard", setTab)}${tabBtn("games", "Games", setTab)}${tabBtn("about", "Updates", setTab)}</div>${body()}`;
+    <div class="toggles">${tabBtn("look", "Skin", setTab)}${tabBtn("home", "Home dashboard", setTab)}${NATIVE ? "" : tabBtn("games", "Games", setTab) + tabBtn("about", "Updates", setTab)}</div>${body()}`;
 }
 
 /* ---------------- Actions ---------------- */

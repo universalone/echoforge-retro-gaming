@@ -30,11 +30,12 @@ import art_fetch  # noqa: E402
 import rom_inbox  # noqa: E402
 import save_backup  # noqa: E402
 import synopsis  # noqa: E402
+import winutil  # noqa: E402
 import padquit  # noqa: E402
 import selfupdate  # noqa: E402
 
 APP_NAME = "EchoForge Retro Gaming"
-APP_VERSION = "2.4.0"
+APP_VERSION = "2.5.0"
 APP_DIR = Path(__file__).resolve().parent
 # Installed, an update replaces the program files, so data lives in the user's profile.
 # Run from source, everything stays next to the script as it always has.
@@ -121,11 +122,11 @@ SYSTEMS = [
 ]
 REGIONS = {"USA": "USA", "Europe": "EUR", "Japan": "JPN", "Asia": "ASIA",
            "World": "WORLD", "JP-US": "JP/US", "Australia": "AUS"}
-DEFAULT_SETTINGS = {"fullscreen": True, "backupAfterPlay": True, "backupWeekly": True, "backupLast": 0,
+DEFAULT_SETTINGS = {"fullscreen": True, "gameScreen": True, "backupAfterPlay": True, "backupWeekly": True, "backupLast": 0,
                     "backupRoot": str(DATA_DIR / "Backups" if INSTALLED else save_backup.DEFAULT_ROOT),
                     "inboxFolder": "", "fetchArt": True, "retroarchDir": "",
                     "synopses": True, "padQuit": True, "padMenu": True, "autoUpdate": True, "updateChecked": 0,
-                    "skin": "retro", "skins": [], "scanlines": True,
+                    "skin": "forge", "skins": [], "scanlines": False,
                     "homeLayout": "classic", "layouts": [], "home": None, "pinned": []}
 ABOUT_RETRY_SECONDS = 30 * 86400
 ABOUT_FILE_NAME = "synopses.json"
@@ -229,6 +230,13 @@ def read_state():
     data.setdefault("settings", {})
     for k, v in DEFAULT_SETTINGS.items():
         data["settings"].setdefault(k, v)
+    # 2.5: EchoForge's look became the default. Someone on the old default (Retro Arcade, scanlines) gets it once;
+    # lookV is saved with the next change, so choosing Retro Arcade again afterwards sticks.
+    s = data["settings"]
+    if s.get("lookV", 0) < 2:
+        if s.get("skin") == "retro":
+            s["skin"], s["scanlines"] = "forge", False
+        s["lookV"] = 2
     return data
 
 
@@ -248,7 +256,7 @@ def update_settings(**changes):
 
 
 ID = re.compile(r"[\w-]{1,40}")
-SETTING_BOOLS = ("fullscreen", "backupAfterPlay", "backupWeekly", "fetchArt", "synopses", "padQuit", "padMenu",
+SETTING_BOOLS = ("fullscreen", "gameScreen", "backupAfterPlay", "backupWeekly", "fetchArt", "synopses", "padQuit", "padMenu",
                  "autoUpdate", "scanlines")
 
 
@@ -346,7 +354,14 @@ def launch(game, fullscreen):
     err = ensure_core(game["core"])
     if err:
         return False, err
-    args =[str(RA_EXE)] + (["-f"] if fullscreen else []) + ["-L", game["core"], game["path"]]
+    # Three screens: the game goes on the middle one, borderless at 1920 x 1080, not fullscreen across all of them.
+    multi, rect = game_screen()
+    extra = []
+    if multi:
+        cfg = DATA_DIR / "retroarch-game-screen.cfg"
+        cfg.write_text(winutil.retroarch_game_screen_cfg(rect), encoding="utf-8")
+        extra = ["--appendconfig", str(cfg)]
+    args = [str(RA_EXE)] + extra + (["-f"] if fullscreen and not multi else []) + ["-L", game["core"], game["path"]]
     flags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
     proc = game_proc["proc"] = subprocess.Popen(args, cwd=str(RA_DIR), creationflags=flags)
     game_proc["game"] = game
@@ -884,11 +899,24 @@ class Handler(BaseHTTPRequestHandler):
         self.send_error(404)
 
 
+def game_screen():
+    """(multi, rect): the middle of three screens when "Games on the middle screen" is on (winutil.game_screen)."""
+    if not read_state()["settings"].get("gameScreen", True):
+        return False, None
+    try:
+        return winutil.game_screen(winutil.monitors())
+    except (OSError, ValueError, ZeroDivisionError):
+        return False, None
+
+
 def open_window():
     url = ORIGIN + "/"
+    multi, rect = game_screen()
+    # On three screens the dashboard opens on the middle one at 1920 x 1080; maximized it would cover all three.
+    size = [f"--window-position={rect[0]},{rect[1]}", f"--window-size={rect[2]},{rect[3]}"] if multi else ["--start-maximized"]
     for edge in EDGE_PATHS:
         if edge.exists():
-            subprocess.Popen([str(edge), f"--app={url}", "--start-maximized"])
+            subprocess.Popen([str(edge), f"--app={url}", *size])
             return
     webbrowser.open(url)
 

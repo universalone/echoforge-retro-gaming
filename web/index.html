@@ -432,17 +432,94 @@
   .gp-aboutfoot { display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: center; font-size: 13px; color: var(--muted); margin-top: 2px; }
   .linkbtn { color: var(--orange-hi); text-decoration: underline; font-size: 13px; padding: 2px 0; border-radius: 4px; }
   .linkbtn:focus { outline: 2px solid var(--orange-hi); outline-offset: 2px; }
+
+  /* ---------------- EchoForge's look and layout (2.5) ----------------
+     The same structure as EchoForge: a 52-pixel top bar with the wordmark and search, a 232-pixel left panel with the
+     library, the systems by era with colored chips and FORGE at the bottom, uppercase display headings, and a Back
+     button on pages opened from another. It's built on the skin's colors and fonts, so every skin keeps working;
+     the EchoForge skin (body.forge) also drops the arcade animations, and cut-corner skins (body.cut) cut the corners. */
+  :root {
+    --a1: var(--title); --a2: var(--orange); --a3: var(--pink);
+    --grad: linear-gradient(115deg, var(--title), var(--orange) 48%, var(--pink));
+    --faint: color-mix(in srgb, var(--muted) 62%, transparent);
+    --cut: 14px;
+  }
+  body { grid-template-columns: 232px 1fr; grid-template-rows: 52px 1fr 44px; font-size: 14px; }
+
+  /* Top bar */
+  .top { gap: 14px; padding: 0 18px 0 16px; }
+  .brand { min-width: 196px; gap: 10px; }
+  .badge { width: 28px; height: 28px; filter: none; }
+  .forge-mark { font-family: var(--pixel); font-size: 17px; letter-spacing: .26em; white-space: nowrap; color: var(--text); }
+  .forge-mark b { font-weight: inherit; background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .search { margin-left: 0; flex: 0 1 460px; height: 34px; border-radius: calc(8px * var(--rs)); }
+  .search input { font-size: 14px; }
+  .top .chip-btn:first-of-type { margin-left: auto; }
+  .chip-btn { height: 34px; padding: 0 14px; font-family: var(--pixel); font-size: 12px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; border-radius: calc(8px * var(--rs)); }
+  .chip-btn.primary { background: var(--grad); border: 0; color: #160b06; }
+  .clock { font-family: var(--pixel); font-size: 14px; letter-spacing: .08em; }
+
+  /* Left panel */
+  .rail { padding: 14px 10px 18px; gap: 2px; background: color-mix(in srgb, var(--bg) 70%, transparent); }
+  .rail h4 { margin: 18px 12px 6px; font: 600 10.5px var(--pixel); letter-spacing: .24em; text-transform: uppercase; color: var(--faint); }
+  .nav { gap: 11px; padding: 9px 12px; border-radius: 8px; border: 0; font-weight: 400; font-size: 14px; color: var(--muted); position: relative; }
+  .nav .ico { flex: none; }
+  .nav .lbl { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .nav .chip { width: 22px; height: 22px; flex: none; display: grid; place-items: center; font: 700 8px "Bahnschrift", "Roboto Condensed", "Arial Narrow", sans-serif; letter-spacing: 0; color: #111; /* compact whatever the skin: a pixel font won't fit */
+    background: linear-gradient(140deg, color-mix(in srgb, var(--c) 72%, #fff), var(--c)); clip-path: polygon(5px 0, 100% 0, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0 100%, 0 5px); }
+  .nav .count { font-size: 11px; color: var(--faint); }
+  .nav:hover { background: color-mix(in srgb, var(--text) 7%, transparent); color: var(--text); }
+  .nav.active { color: var(--text); background: linear-gradient(90deg, color-mix(in srgb, var(--orange) 20%, transparent), transparent); }
+  .nav.active::before { content: ""; position: absolute; left: -10px; top: 8px; bottom: 8px; width: 3px; background: var(--grad); border-radius: 0 3px 3px 0; }
+  .nav:focus { outline: 2px solid var(--orange-hi); outline-offset: -2px; }
+
+  /* Pages */
+  main { padding: 26px 36px 40px; }
+  .view-head { align-items: baseline; }
+  .view-head h1 { font: 600 34px/1.1 var(--pixel); letter-spacing: .04em; text-transform: uppercase; }
+  .section-title { display: flex; align-items: center; gap: 12px; font: 600 15px var(--pixel); letter-spacing: .2em; color: var(--muted); }
+  .section-title::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, color-mix(in srgb, var(--text) 13%, transparent), transparent); }
+  .hero .eyebrow, .gp .eyebrow { font: 600 12px var(--pixel); letter-spacing: .3em; text-transform: uppercase; color: var(--title); }
+  .hero .title { font-family: var(--pixel); text-transform: uppercase; letter-spacing: .02em; }
+  .meta .t { font-size: 14px; font-weight: 600; }
+
+  /* Game page */
+  .gp-backrow { position: relative; z-index: 1; margin-bottom: 10px; }
+  .back-btn { height: 30px; padding: 0 12px; font-size: 11.5px; background: color-mix(in srgb, var(--bg) 55%, transparent); }
+  .gp-pills { display: flex; flex-wrap: wrap; gap: 8px; }
+  .gp-pills .pill { display: inline-flex; align-items: center; height: 24px; padding: 0 11px; border-radius: 20px; font-size: 12px; font-weight: 600; letter-spacing: .03em;
+    background: color-mix(in srgb, var(--text) 9%, transparent); color: var(--text2); }
+  .gp-pills .sys-pill { background: color-mix(in srgb, var(--c, var(--orange)) 22%, transparent); color: var(--text); }
+  .gp-pills .fav { color: var(--title); }
+  .gp h1 { font: 700 clamp(30px, 4.2vw, 58px)/1.04 var(--pixel); text-transform: uppercase; letter-spacing: .02em; color: var(--text); margin: 14px 0 12px; text-shadow: 0 4px 30px rgba(0, 0, 0, .6); }
+  .gp-actions .play { height: 48px; padding: 0 28px; background: var(--grad); color: #160b06; font: 700 15px var(--pixel); letter-spacing: .14em; text-transform: uppercase; border-radius: calc(8px * var(--rs)); }
+  .gp-actions .chip-btn { height: 48px; padding: 0 20px; font-size: 13px; }
+
+  /* Controller hints */
+  .hints { gap: 22px; padding: 0 20px; font-size: 12.5px; }
+
+  /* Cut corners (EchoForge skin and other cut-corner skins) */
+  body.cut .chip-btn, body.cut .search, body.cut .gp-actions .play {
+    border-radius: 0; clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px); }
+  body.cut .hero, body.cut .panelx, body.cut .upd, body.cut .sys-card, body.cut .stile, body.cut .skin {
+    border-radius: 0; clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut)); }
+  body.cut .tile { border-radius: 4px; }
+
+  /* The EchoForge skin: EchoForge's calm hover lift instead of the arcade breathing borders and color-flowing titles */
+  body.forge .hero { animation: none; border: 1px solid color-mix(in srgb, var(--text) 10%, transparent); }
+  body.forge .tile:focus, body.forge .tile.kbd-focus, body.forge .tile:hover { animation: none; }
+  body.forge .hero .title, body.forge .tile:focus .meta .t, body.forge .tile.kbd-focus .meta .t, body.forge .tile:hover .meta .t {
+    animation: none; background: none; -webkit-background-clip: border-box; background-clip: border-box; color: var(--text); filter: none; }
+  body.forge .tile:focus, body.forge .tile.kbd-focus { border-color: var(--orange); box-shadow: 0 14px 30px #0008, 0 0 0 3px color-mix(in srgb, var(--orange) 38%, transparent); }
+  body.forge::after { display: none; }
 </style>
 </head>
 <body>
   <div class="bgwall" id="bgWall"></div>
   <header class="top">
-    <div class="brand">
+    <div class="brand" title="EchoForge Retro Gaming">
       <div class="badge"><img src="/logo.svg" alt="" onerror="this.src='/icon.png'"></div>
-      <div class="wordmark">
-        <div class="small">ECHO<span>FORGE</span></div>
-        <div class="big">RETRO <span>GAMING</span></div>
-      </div>
+      <div class="wordmark forge-mark">RETRO<b>FORGE</b></div>
     </div>
     <label class="search">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9A918C" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
@@ -450,7 +527,7 @@
     </label>
     <button class="chip-btn" id="fsLaunch" data-nav title="Start games in full screen"><span class="switch"></span>Full-screen games</button>
     <button class="chip-btn" id="fsApp" data-nav title="Make this dashboard full screen (F11)">⛶ Dashboard</button>
-    <button class="chip-btn only-native" data-nav data-action="openRetroArch" title="Controllers, video, more emulators">⚙ Settings</button>
+    <button class="chip-btn only-native" data-nav data-action="openRetroArch" title="RetroArch settings: controllers, video, more emulators">⚙ RetroArch</button>
     <div class="clock" id="clock"></div>
   </header>
 
@@ -637,23 +714,44 @@ function setHTML(el, html) {
   return true;
 }
 
+// The left panel, laid out like EchoForge's: the library, then the systems grouped by era, each with its colored chip,
+// then Settings (and Save backups on the PC) under FORGE.
+const RAIL_ICONS = {
+  home: '<path d="M3 11 12 4l9 7v9H3z"/><path d="M9 20v-6h6v6"/>',
+  all: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
+  favorites: '<path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/>',
+  collections: '<rect x="7" y="7" width="13" height="13" rx="2"/><path d="M4 16V5a1 1 0 0 1 1-1h11"/>',
+  inbox: '<path d="M3 13h5l2 3h4l2-3h5"/><path d="M5 5h14l2 8v6H3v-6z"/>',
+  settings: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/>',
+  backups: '<path d="M5 3h11l3 3v15H5z"/><path d="M8 3v6h8V3M8 21v-7h8v7"/>'
+};
+const railIcon = (k) => `<svg class="ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${RAIL_ICONS[k] || ""}</svg>`;
+// The short label on each system's chip in the left panel (2-4 letters, as on EchoForge's).
+const SYS_CHIP = { nes: "NES", snes: "SNES", n64: "N64", arcade: "ARC", gb: "GB", gbc: "GBC", genesis: "GEN", gamegear: "GG", psx: "PS1", "32x": "32X", wii: "WII", gamecube: "GC", dreamcast: "DC" };
+const SYS_GROUPS = [["8 & 16-bit", ["nes", "snes", "genesis", "32x"]], ["3D era", ["n64", "psx", "dreamcast", "gamecube", "wii"]],
+  ["Handheld", ["gb", "gbc", "gamegear"]], ["Arcade", ["arcade"]]];
 function renderRail() {
   const count = (id) => lib.games.filter((g) => g.system === id).length;
   const base = view.startsWith("game:") ? (trail[trail.length - 1]?.view || "home") : view;
+  const on = (id) => base === id || (id === "collections" && base.startsWith("series:"));
+  const lead = (id) => RAIL_ICONS[id] ? railIcon(id) : `<span class="chip" style="--c:${SYS_COLOR[id] || "var(--muted)"}">${esc(SYS_CHIP[id] || (SYS_SHORT[id] || id).slice(0, 4).toUpperCase())}</span>`;
   const item = (id, label, c, n, cls = "") =>
-    `<button class="nav ${cls} ${base === id || (id === "collections" && base.startsWith("series:")) ? "active" : ""}" data-nav data-view="${id}" style="--c:${c}"><span class="dot"></span>${label}${n != null && n !== "" ? `<span class="count${cls.includes("hasnew") ? " new" : ""}">${n}</span>` : ""}</button>`;
+    `<button class="nav ${cls} ${on(id) ? "active" : ""}" data-nav data-view="${id}" style="--c:${c}">${lead(id)}<span class="lbl">${label}</span>${n != null && n !== "" ? `<span class="count${cls.includes("hasnew") ? " new" : ""}">${n}</span>` : ""}</button>`;
   const ready = inbox.items.filter((i) => i.status === "ready").length;
+  const known = new Set(SYS_GROUPS.flatMap(([, ids]) => ids));
+  const groups = [...SYS_GROUPS, ["More systems", lib.systems.map((s) => s.id).filter((id) => !known.has(id))]]
+    .map(([name, ids]) => [name, ids.map((id) => lib.systems.find((s) => s.id === id)).filter(Boolean)]).filter(([, list]) => list.length);
   setHTML($("#rail"),
-    `<h4>LIBRARY</h4>` +
     item("home", "Home", "var(--orange)") +
     item("all", "All games", "#D9D0CA", lib.games.length) +
     item("favorites", "Favorites", "var(--orange-hi)", lib.favorites.length) +
     item("collections", "Collections", "var(--title)", seriesData().list.length) +
-    (NATIVE ? "" : item("settings", "Settings", "var(--muted)")) +
-    (NATIVE ? "" : item("inbox", "Add games", "var(--ember)", ready || "", ready ? "hasnew" : "") + item("backups", "Save backups", "#2FB36B")) +
-    `<h4>SYSTEMS</h4>` +
-    lib.systems.map((s) => item(s.id, s.name, SYS_COLOR[s.id], count(s.id))).join(""));
+    (NATIVE ? "" : item("inbox", "Add games", "var(--ember)", ready || "", ready ? "hasnew" : "")) +
+    groups.map(([name, list]) => `<h4>${esc(name)}</h4>` + list.map((s) => item(s.id, s.name, SYS_COLOR[s.id], count(s.id))).join("")).join("") +
+    `<h4>Forge</h4>` + item("settings", "Settings", "var(--muted)") + (NATIVE ? "" : item("backups", "Save backups", "#2FB36B")));
 }
+// "← Back", as on EchoForge's game page: shown on pages opened from another one (a game, a collection).
+const backBtn = () => `<button class="chip-btn back-btn" data-nav data-act="back">← Back</button>`;
 
 function gridOrEmpty(list, empty) {
   return list.length ? `<div class="grid">${list.map(tile).join("")}</div>` : `<div class="empty">${empty}</div>`;
@@ -680,8 +778,9 @@ function viewGame(g) {
     moreTitle = `More ${sys ? sys.name : ""} games`;
   }
   return `<div class="gp" style="--c:${SYS_COLOR[g.system]}">${backdrop}
+    <div class="gp-backrow">${backBtn()}</div>
     <div class="gp-top">${cover}<div>
-      <div class="eyebrow">${esc(sys ? sys.full : SYS_SHORT[g.system])}${g.region ? " · " + esc(g.region) : ""}</div>
+      <div class="gp-pills"><span class="pill sys-pill">${esc(sys ? sys.full : SYS_SHORT[g.system])}</span>${g.region ? `<span class="pill">${esc(g.region)}</span>` : ""}${fav ? `<span class="pill fav">★ Favorite</span>` : ""}</div>
       <h1>${esc(g.title)}</h1>
       <div class="facts">${h ? `<span>Played <b>${h.plays}</b> time${h.plays === 1 ? "" : "s"}</span><span>Last played <b>${ago(h.last)}</b></span>` : "<span>Not played yet</span>"}
         ${s ? `<span>Collection: <b>${esc(s.name)}</b></span>` : ""}</div>
@@ -689,9 +788,9 @@ function viewGame(g) {
         <button class="play" data-nav data-play="${g.id}" data-id="${g.id}" id="gpPlay">▶ PLAY</button>
         <button class="chip-btn" data-nav data-act="fav" data-arg="${g.id}">${fav ? "★ Favorite" : "☆ Add to favorites"}</button>
         ${s ? `<button class="chip-btn" data-nav data-view="series:${esc(s.key)}">▦ ${esc(s.name)}</button>` : ""}
-        ${NATIVE ? "" : `<button class="chip-btn" data-nav data-act="series" data-arg="${g.id}">✎ Collection</button>
-          <button class="chip-btn" data-nav data-act="pin" data-arg="${g.id}">${(lib.settings.pinned || []).includes(g.id) ? "📌 Pinned to Home" : "📌 Pin to Home"}</button>
-          ${g.art ? `<button class="chip-btn" data-nav data-act="makeSkin" data-arg="${g.id}">🎨 Make a skin</button>` : ""}`}
+        ${NATIVE ? "" : `<button class="chip-btn" data-nav data-act="series" data-arg="${g.id}">✎ Collection</button>`}
+        <button class="chip-btn" data-nav data-act="pin" data-arg="${g.id}">${(lib.settings.pinned || []).includes(g.id) ? "📌 Pinned to Home" : "📌 Pin to Home"}</button>
+        ${g.art ? `<button class="chip-btn" data-nav data-act="makeSkin" data-arg="${g.id}">🎨 Make a skin</button>` : ""}
       </div>${aboutHTML(g)}</div></div>
     ${shots.length ? `<div class="section-title">Screenshots</div><div class="shots">${shots.map(([k, label]) =>
       `<div class="shot" data-nav tabindex="0" title="${label}"><img src="/${k}/${g.id}" alt="${label}" loading="lazy" decoding="async"></div>`).join("")}</div>` : ""}
@@ -758,7 +857,7 @@ function renderMain() {
   if (view.startsWith("series:")) {
     const s = seriesData().list.find((x) => x.key === view.slice(7));
     if (!s) { view = "collections"; return renderMain(); }
-    return setHTML(m, `<div class="view-head"><h1>${esc(s.name)}</h1><span class="sub">${s.games.length} games</span></div>` + gridOrEmpty(s.games, ""));
+    return setHTML(m, (trail.length ? `<div class="gp-backrow">${backBtn()}</div>` : "") + `<div class="view-head"><h1>${esc(s.name)}</h1><span class="sub">${s.games.length} games</span></div>` + gridOrEmpty(s.games, ""));
   }
   let list, title;
   if (view === "all") { list = lib.games; title = "All games"; }
@@ -864,6 +963,7 @@ async function refreshBackups() {
 
 async function act(name, arg, el) {
   if (await customAct(name, arg, el)) return;
+  if (name === "back") return back();
   if (name === "fav") return toggleFav(arg);
   if (name === "series") return editSeries(arg);
   if (name === "inboxFolder") {
