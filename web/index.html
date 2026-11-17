@@ -746,7 +746,7 @@ function renderRail() {
     item("all", "All games", "#D9D0CA", lib.games.length) +
     item("favorites", "Favorites", "var(--orange-hi)", lib.favorites.length) +
     item("collections", "Collections", "var(--title)", seriesData().list.length) +
-    (NATIVE ? "" : item("inbox", "Add games", "var(--ember)", ready || "", ready ? "hasnew" : "")) +
+    item("inbox", "Add games", "var(--ember)", ready || "", ready ? "hasnew" : "") +
     groups.map(([name, list]) => `<h4>${esc(name)}</h4>` + list.map((s) => item(s.id, s.name, SYS_COLOR[s.id], count(s.id))).join("")).join("") +
     `<h4>Forge</h4>` + item("settings", "Settings", "var(--muted)") + (NATIVE ? "" : item("backups", "Save backups", "#2FB36B")));
 }
@@ -801,8 +801,21 @@ function viewGame(g) {
 function viewInbox() {
   const items = inbox.items;
   const ready = items.filter((i) => i.status === "ready");
+  const all = ready.length > 1 ? `<button class="chip-btn primary" data-nav data-act="inboxAll">Add all ${ready.length}</button>` : "";
+  if (NATIVE) return `<div class="view-head"><h1>Add games</h1><span class="sub">From ${esc(inbox.folder || "this device")}</span>${all}</div>
+    <p class="note">Put game files you made from cartridges and discs you own in your <b>Download</b> folder, in <code>JLRetro/Add games</code>,
+      or on a <b>USB drive or SD card</b>, and they show up here: NES, SNES, N64, Game Boy, Game Boy Color, Genesis, Game Gear and 32X
+      (loose or in a <code>.zip</code>), and PlayStation (<code>.chd</code>, <code>.pbp</code>, or <code>.cue</code> with its <code>.bin</code>).
+      Arcade <code>.zip</code> sets go in a folder named <b>Arcade</b>. Each game is moved into your library (from a USB drive or SD card it's copied,
+      and the original stays there), and its box art and screenshots download by themselves. Programs and other files are never opened.</p>
+    <button class="chip-btn" data-nav data-act="inboxRefresh">Look again</button>
+    ${items.length ? `<div class="list">${items.map((i) => `<div class="item${i.status === "ready" ? "" : " wait"}" style="--c:${SYS_COLOR[i.system]}">
+        <span class="pill">${SYS_SHORT[i.system]}</span>
+        <div class="what"><b>${esc(i.label)}</b><span>${esc(i.name)} · ${size(i.size)}${i.status === "copying" ? " · still being copied" : ""}</span></div>
+        ${i.status === "ready" ? `<button class="chip-btn primary" data-nav data-act="inboxAdd" data-arg="${esc(i.file)}">Add</button>` : ""}</div>`).join("")}</div>`
+      : `<div class="empty">No new games found yet. Copy a game file to one of the places above, then press Look again.</div>`}`;
   return `<div class="view-head"><h1>Add games</h1><span class="sub">${esc(inbox.folder || "No folder chosen")}</span>
-      ${ready.length > 1 ? `<button class="chip-btn primary" data-nav data-act="inboxAll">Add all ${ready.length}</button>` : ""}</div>
+      ${all}</div>
     <p class="note">Game files you made from cartridges you own, for NES, SNES, N64, Game Boy, Genesis, Game Gear and 32X, show up here from the folder you choose.
       Each one is checked from the game file inside (loose, <code>.zip</code> or <code>.7z</code>), copied into its system's folder,
       added to your library with box art and screenshots, and then the original goes to the Recycle Bin. Programs and shortcuts are never opened.
@@ -945,7 +958,7 @@ async function editSeries(id) {
 }
 
 async function refreshInbox() {
-  if (NATIVE || !lib) return;
+  if (!lib) return;
   try {
     const r = await api("/api/inbox");
     const before = inbox.items.filter((i) => i.status === "ready").length;
@@ -972,9 +985,11 @@ async function act(name, arg, el) {
     delete $("#inboxFolder").dataset.typed;
     return refreshInbox();
   }
+  if (name === "inboxRefresh") { toast("Looking for games…"); await new Promise((r) => setTimeout(r, 50)); return refreshInbox(); }
   if (name === "inboxAdd" || name === "inboxAll") {
     el.disabled = true; el.textContent = "Adding…";
     toast(name === "inboxAll" ? "Adding your games…" : "Adding…");
+    if (NATIVE) await new Promise((r) => setTimeout(r, 50)); // let the page show it first: copying from a USB drive takes a while
     const r = await api("/api/inbox/add", name === "inboxAll" ? { all: true } : { file: arg });
     if (r.added?.length) toast(r.added.length === 1 ? `Added ${r.added[0].label}` : `Added ${r.added.length} games`);
     if (r.errors?.length) toast(r.errors[0].error);
@@ -1168,6 +1183,7 @@ window.jlProgress = (text) => {
   bar.textContent = text || "";
   bar.classList.toggle("show", !!text);
 };
+window.jlLibraryChanged = async () => { if (!lib) return; lib = await api("/api/library"); if (lib.version == null) lib.version = 0; render(false); };
 window.jlResume = () => { launching = null; $("#overlay").classList.remove("show"); start(); };
 
 function renderSetup(s) {
@@ -1177,7 +1193,7 @@ function renderSetup(s) {
   setHTML($("#rail"), "");
   setHTML($("#main"), `<div class="view-head"><h1>Let's get you set up</h1></div><div class="setup">
     ${step(s.retroarch, "Game engine", "Your games run in the built-in EchoForge engine.", "", "")}
-    ${step(s.permission, "Allow access to your games", "Lets this app read the JLRetro folder on your phone.", "grantAccess", "Allow access")}
+    ${step(s.permission, "Allow access to your games", "Lets this app find your game files and keep your library in the JLRetro folder on this device.", "grantAccess", "Allow access")}
     ${s.library ? step(true, "Your games", "", "", "") : `<div class="setup-step"><span class="check"></span><div><b>Your games</b>
       <p>Copy your JLRetro folder from your PC to <code>${esc(s.root)}</code>.</p></div></div>`}
     ${s.cores ? `<div class="setup-step"><span class="check">i</span><div><b>Emulators</b><p>These download by themselves the first time you play each system: ${esc(s.cores)}.</p></div></div>` : ""}
@@ -1223,6 +1239,7 @@ async function start() {
   const first = !lib;
   lib = await api("/api/library");
   if (lib.version == null) lib.version = 0;
+  if (NATIVE && first && !lib.games.length) { view = "inbox"; refreshInbox(); }
   applySkin();
   render(first || !document.activeElement || document.activeElement === document.body);
 }
@@ -1245,6 +1262,7 @@ else window.addEventListener("pagehide", () => navigator.sendBeacon("/api/bye", 
   if (!NATIVE) await waitForRetroArch();
   await start();
   tick(); setInterval(tick, 10000);
+  if (NATIVE) setInterval(() => { if (view === "inbox" && !document.hidden) refreshInbox(); }, 15000);
   if (!NATIVE) {
     setInterval(poll, 2000); requestAnimationFrame(padLoop);
     refreshInbox(); setInterval(() => { if (!document.hidden) refreshInbox(); }, 10000);
