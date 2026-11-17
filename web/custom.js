@@ -176,7 +176,6 @@ function aboutHTML(g) {
 /* ---------------- Updates ---------------- */
 let upd = null;   // /api/update
 async function refreshUpdate() {
-  if (NATIVE) return;
   try { upd = await api("/api/update"); } catch (e) { return; }
   if (upd.busy) setTimeout(refreshUpdate, 700);
   render(false);
@@ -263,7 +262,9 @@ function gamesTab() {
 }
 function aboutTab() {
   const l = upd?.last;
-  return `<p class="note">EchoForge Retro Gaming ${esc(upd?.current || lib.version)}. ${upd && !upd.installed ? "This copy runs from its source folder, so it's updated with git." : "Updates come from the project's GitHub releases and are checked against GitHub's checksum before they run."}</p>
+  return `<p class="note">EchoForge Retro Gaming ${esc(upd?.current || lib.version)}. ${upd && !upd.installed ? "This copy runs from its source folder, so it's updated with git."
+    : NATIVE ? "Updates come from the project's GitHub releases and are checked against GitHub's checksum. Android asks you to confirm each one; the first time, it also asks you to allow this app to install updates."
+    : "Updates come from the project's GitHub releases and are checked against GitHub's checksum before they run."}</p>
     ${updateBanner()}
     <div class="toggles">${sw("autoUpdate", "Check for updates once a day", lib.settings.autoUpdate !== false)}
       <button class="chip-btn" data-nav data-act="updCheck">Check for updates</button></div>
@@ -271,9 +272,9 @@ function aboutTab() {
     ${l ? `<p class="note">${l.ok ? (l.update ? "" : `You're up to date.${l.latest ? ` The newest release on GitHub is ${esc(l.latest.version)}.` : ""}`) : esc(l.error)}</p>` : ""}`;
 }
 function viewSettings() {
-  const body = (NATIVE ? { look: lookTab, home: homeTabHTML } : { look: lookTab, home: homeTabHTML, games: gamesTab, about: aboutTab })[setTab] || lookTab;
+  const body = (NATIVE ? { look: lookTab, home: homeTabHTML, about: aboutTab } : { look: lookTab, home: homeTabHTML, games: gamesTab, about: aboutTab })[setTab] || lookTab;
   return `<div class="view-head"><h1>Settings</h1></div>
-    <div class="toggles">${tabBtn("look", "Skin", setTab)}${tabBtn("home", "Home dashboard", setTab)}${NATIVE ? "" : tabBtn("games", "Games", setTab) + tabBtn("about", "Updates", setTab)}</div>${body()}`;
+    <div class="toggles">${tabBtn("look", "Skin", setTab)}${tabBtn("home", "Home dashboard", setTab)}${NATIVE ? "" : tabBtn("games", "Games", setTab)}${tabBtn("about", "Updates", setTab)}</div>${body()}`;
 }
 
 /* ---------------- Actions ---------------- */
